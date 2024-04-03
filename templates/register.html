@@ -1,0 +1,118 @@
+{% extends 'template.html' %}
+
+{% block tab_title %}Register{% endblock %}
+
+{% block title %}Create Your Account{% endblock %}
+
+{% block content %}
+    <section class="account">
+        <div class="container">
+            <div class="login">
+                <form class="login-form" method="post">
+                    <h3>Register</h3>
+
+                    <div class="row mt-3">
+                        <div class="col-lg-12 col-md-12 col-sm-12">
+                            <input type="text" name="text" id="name" class="form-control"
+                                placeholder="Full Name" style="text-transform: none;" required>
+                        </div>
+                    </div>
+
+                    <div class="row mt-3">
+                        <div class="col-lg-12 col-md-12 col-sm-12">
+                            <input type="email" name="email" id="email" class="form-control""
+                                placeholder="Email" required>
+                        </div>
+                    </div>
+
+                    <div class="row mt-3">
+                        <div class="col-lg-12 col-md-12 col-sm-12">
+                            <input type="password" name="password" id="password" class="form-control" placeholder="Password" required>
+                        </div>
+                    </div>
+
+                    <div class="row mt-3">
+                        <div class="col-lg-12 col-md-12 col-sm-12">
+                            <input type="password" name="password" id="confirm-password" class="form-control" placeholder="Confirm Password" required>
+                        </div>
+                        <div id="password-warning" style="color: red;"></div>
+                    </div>
+
+                    <div class="row mt-3">
+                        <div class="col-lg-12 col-md-12 col-sm-12">
+                            <input type="date" name="date_of_birth" id="date_of_birth" class="form-control" placeholder="Date of Birth" required>
+                        </div>
+                    </div>
+
+
+                    <div class="row mt-3">
+                        <div class="col-lg-12 col-md-12 col-sm-12">
+                            <input type="text" class="form-control" name="text" id="useless" class="form-control"
+                                placeholder="Upload Profile Picture Below:" maxlength="0">
+                        </div>
+                    </div>
+                    
+                    <div class="row mt-3">
+                        <div class="col-lg-12 col-md-12 col-sm-12" id="image-container"
+                            style="position: relative; height: 300px; text-align: center;">
+                            <label for="logo" style="cursor: pointer;">
+                                <input type="file" name="imageUpload" id="logo" accept="image/*"
+                                    style="border-radius: 50%; position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0;"
+                                    onchange="previewImage(event)" required>
+                                <img id="default-image" src="https://cdn.pixabay.com/photo/2022/01/26/23/01/camera-6970115_1280.png"
+                                    alt="Default Image" style="border-radius: 50%; height: 15em; width: 15em;">
+                            </label>
+                        </div>
+                    </div>
+
+                    <button class="btn form-btn" method="post">Register</button>
+                </form>
+                <br>
+                <p class="register-link">Already have an account? <a href="/login/">Login here</a>.
+            </div>
+        </div>
+    </section>
+
+    <script>
+        // Check if the password and confirm password match
+        function checkPasswordMatch() {
+            var password = document.getElementById("password").value;
+            var confirmPassword = document.getElementById("confirm-password").value;
+
+            if (password !== confirmPassword) {
+                document.getElementById("password-warning").innerHTML = "Passwords do not match";
+            } else {
+                document.getElementById("password-warning").innerHTML = "";
+            }
+        }
+
+        // Add event listener to password and confirm password fields
+        document.getElementById("password").addEventListener("keyup", checkPasswordMatch);
+        document.getElementById("confirm-password").addEventListener("keyup", checkPasswordMatch);
+
+        function previewImage(event) {
+            var defaultImage = document.getElementById('default-image');
+                var file = event.target.files[0];
+                var reader = new FileReader();
+
+                reader.onload = function () {
+                    defaultImage.src = reader.result;
+                defaultImage.style.display = "block";
+
+                // Apply specified style to the preview image
+                defaultImage.style.borderRadius = "50%";
+                defaultImage.style.width = "15em";
+                defaultImage.style.height = "15em";
+                defaultImage.style.position = "absolute";
+                defaultImage.style.top = "50%";
+                defaultImage.style.left = "50%";
+                defaultImage.style.transform = "translate(-50%, -50%)";
+            }
+
+                if (file) {
+                    reader.readAsDataURL(file);
+            }
+        }
+    </script>
+
+{% endblock %}

@@ -1,0 +1,53 @@
+{% extends 'template.html' %}
+
+{% block tab_title %}Organization{% endblock %}
+
+{% block title %}Homepage For {{ organization_name }}{% endblock %}
+
+{% block content %}
+<section class="account">
+    <div class="container">
+        <div class="home-body">
+            <div class="row">
+                <div class="col-lg-4">
+                    <div class="card rounded-3 m-2">
+                        <div class="card-body">
+                            <h5 class="card-title"><b>View Posts</b></h5>
+                            <p class="card-text">
+                                See what people in your organization have been saying and make a post yourself.
+                                Find other people that share similar intersts and potentially set up matches.
+                            </p>
+                            <a href="/organization/{{ org_id }}/posts/" class="btn form-btn">View Posts</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-4">
+                    <div class="card rounded-3 m-2">
+                        <div class="card-body">
+                            <h5 class="card-title"><b>View and Join Events</b></h5>
+                            <p class="card-text">
+                                See what sporting events are happening within this organization and register for them.
+                                Events could include sports including basketball, football, soccer, and many more!
+                            </p>
+                            <a href="/organization/{{ org_id }}/events/" class="btn form-btn">View Events</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-4">
+                    <div class="card rounded-3 m-2">
+                        <div class="card-body">
+                            <h5 class="card-title"><b>Check Out Stats</b></h5>
+                            <p class="card-text">
+                                Keep up with how people people in your group are doing. Look at and keep track of you and your peer's
+                                stats across every event that you have participated in.
+                            </p>
+                            <a href="/organization/{{ org_id }}/stats/" class="btn form-btn">View Stats</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+{% endblock %}

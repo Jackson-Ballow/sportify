@@ -1,0 +1,35 @@
+{% extends 'template.html' %}
+
+{% block tab_title %}Home{% endblock %}
+
+{% block title %}Welcome To Athlete Website{% endblock %}
+
+{% block content %}
+<section class="account">
+    <div class="container">
+        <div class="home-body-2">
+            <h1 style="text-align: center;"><b>View Your Organizations</b></h1>
+            <br />
+            <ul>
+            {% for org in org_list %}
+                <a href="/organization/0/" style="color: inherit; text-decoration: none; cursor: pointer;">
+                    <li style="list-style: none;">
+                        <div class="row align-items-start">
+                            <div class="col-md-4">
+                                <img class="org-logo" src="https://www.polaris-cc.com/logo/" />
+                            </div>
+                            <div class="col-md-8">
+                                <br />
+                                <h2>Organization Name</h2>
+                                <p>Here is the organization's description that I made longer to make sure it goes onto a new line</p>
+                            </div>
+                        </div>
+                    </li>
+                </a>
+            {% endfor %}
+            </ul>
+        </div>
+    </div>
+</section>
+
+{% endblock %}

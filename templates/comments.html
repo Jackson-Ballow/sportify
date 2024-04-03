@@ -1,0 +1,68 @@
+{% extends 'template.html' %}
+
+{% block tab_title %}Comments{% endblock %}
+
+{% block title %}View Comments{% endblock %}
+
+{% block content %}
+<section class="account">
+    <div class="container">
+        <div class="home-body-2">
+            <div class="row justify-content-center">
+                <a class="btn form-btn" href=".." style="width: 45%; margin-right: 1em; background-color: rgb(170, 169, 169); color: black;">Go Back</a>
+                <button type="button" class="btn form-btn" style="width: 45%;" data-toggle="modal" data-target="#myModal">Leave a Comment</button>
+            </div>
+            <div class="modal fade" id="myModal">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="myModalLabel"><b>Leave a Comment</b></h5>
+                        </div>
+                        <div class="modal-body">
+                            <form method="post">
+                                <div class="form-group">
+                                    <label for="post_content">Comment Content</label>
+                                    <textarea class="form-control" id="post_content" name="post_content" rows="4"
+                                        cols="50"></textarea>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="submit" class="btn form-btn">Leave Comment</button>
+                                    <!-- Move the submit button inside the form -->
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <br /> <br />
+            <div class="row align-items-start">
+                <div class="col-md-4">
+                    <img class="org-logo" src="https://www.polaris-cc.com/logo/" />
+                </div>
+                <div class="col-md-8">
+                    <br />
+                    <h2>Original Post Title</h2>
+                    <p><i>Author's Name</i><br />Here is the text for a post in this sample post list</p>
+                </div>
+            </div>
+            <ul>
+                {% for post in comment_list %}
+                    <li style="list-style: none;">
+                        <div class="row align-items-start">
+                            <div class="col-md-4">
+                                <img class="comment-pfp" src="https://www.polaris-cc.com/logo/" />
+                            </div>
+                            <div class="col-md-8">
+                                <br />
+                                <p><i>Author's Name</i><br />Here is the text for a post in this sample post list</p>
+                            </div>
+                        </div>
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+</section>
+
+{% endblock %}

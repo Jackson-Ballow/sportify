@@ -1,0 +1,64 @@
+{% extends 'template.html' %}
+
+{% block tab_title %}Posts{% endblock %}
+
+{% block title %}Posts For {{ organization_name }}{% endblock %}
+
+{% block content %}
+<section class="account">
+    <div class="container">
+        <div class="home-body-2">
+            <div class="row justify-content-center">
+                <a class="btn form-btn" href=".." style="width: 45%; margin-right: 1em; background-color: rgb(170, 169, 169); color: black;">Go Back</a>
+                <button type="button" class="btn form-btn" style="width: 45%;" data-toggle="modal" data-target="#myModal">Make a Post</button>
+            </div>
+            <div class="modal fade" id="myModal">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="myModalLabel"><b>Make Post</b></h5>
+                        </div>
+                        <div class="modal-body">
+                            <form method="post">
+                                <div class="form-group">
+                                    <label for="post_title">Post Title</label>
+                                    <input class="form-control" id="post_title" name="post_title">                                    
+                                    <br />
+                                    <label for="post_content">Post Content</label>
+                                    <textarea class="form-control" id="post_content" name="post_content" rows="4"
+                                        cols="50"></textarea>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="submit" class="btn form-btn">Make Post</button>
+                                    <!-- Move the submit button inside the form -->
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <br /> <br />
+            <ul>
+                {% for post in post_list %}
+                <a href="/organization/{{ org_id }}/posts/0/" style="color: inherit; text-decoration: none; cursor: pointer;">
+                    <li style="list-style: none;">
+                        <div class="row align-items-start">
+                            <div class="col-md-4">
+                                <img class="org-logo" src="https://www.polaris-cc.com/logo/" />
+                            </div>
+                            <div class="col-md-8">
+                                <br />
+                                <h2>Post Title</h2>
+                                <p><i>Author's Name</i><br />Here is the text for a post in this sample post list</p>
+                            </div>
+                        </div>
+                    </li>
+                </a>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+</section>
+
+{% endblock %}

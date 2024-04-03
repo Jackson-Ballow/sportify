@@ -1,0 +1,115 @@
+{% extends 'template.html' %}
+
+{% block tab_title %}Profile{% endblock %}
+
+{% block title %}View Stats For {{ organization_name }}{% endblock %}
+
+{% block content %}
+<section class="account">
+    <div class="container">
+        <div class="home-body-2">
+            <div class="row justify-content-center">
+                <a class="btn form-btn" href=".."
+                    style="width: 45%; margin-right: 1em; background-color: rgb(170, 169, 169); color: black;">Go Back</a>
+                <a href="/profile/" class="btn form-btn" style="width: 45%;"">View Personal Stats</a>
+            </div>
+            <br />
+            <h1 style="text-align: center;"><b>View Stats</b></h1>
+            <select id="sportSelect" class="table-dropdown" onchange="changeTable()">
+                <option value="basketball">Basketball</option>
+                <option value="football">Football</option>
+                <option value="soccer">Soccer</option>
+            </select>
+
+            <table id="basketballTable">
+                <thead>
+                    <tr>
+                        <th>Event</th>
+                        <th>Team 1</th>
+                        <th>Team 1 Score</th>
+                        <th>Team 2</th>
+                        <th>Team 2 Score</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for game in basketball_list %}
+                    <tr>
+                        <td>{{ game[0] }}</td>
+                        <td>{{ game[1] }}</td>
+                        <td>{{ game[2] }}</td>
+                        <td>{{ game[3] }}</td>
+                        <td>{{ game[4] }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            <table id="footballTable" style="display: none;">
+                <thead>
+                    <tr>
+                        <th>Event</th>
+                        <th>Team 1</th>
+                        <th>Team 1 Score</th>
+                        <th>Team 2</th>
+                        <th>Team 2 Score</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for game in football_list %}
+                    <tr>
+                        <td>{{ game[0] }}</td>
+                        <td>{{ game[1] }}</td>
+                        <td>{{ game[2] }}</td>
+                        <td>{{ game[3] }}</td>
+                        <td>{{ game[4] }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            <table id="soccerTable" style="display: none;">
+                <thead>
+                    <tr>
+                        <th>Event</th>
+                        <th>Team 1</th>
+                        <th>Team 1 Score</th>
+                        <th>Team 2</th>
+                        <th>Team 2 Score</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for game in soccer_list %}
+                    <tr>
+                        <td>{{ game[0] }}</td>
+                        <td>{{ game[1] }}</td>
+                        <td>{{ game[2] }}</td>
+                        <td>{{ game[3] }}</td>
+                        <td>{{ game[4] }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
+
+<script>
+    function changeTable() {
+        var selectBox = document.getElementById("sportSelect");
+        var selectedValue = selectBox.value;
+
+        // Hide all tables
+        var tables = document.querySelectorAll("table");
+        tables.forEach(function (table) {
+            table.style.display = "none";
+        });
+
+        // Show the selected table
+        var selectedTable = document.getElementById(selectedValue + "Table");
+        if (selectedTable) {
+            selectedTable.style.display = "table";
+        }
+    }
+</script>
+
+{% endblock %}
