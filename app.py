@@ -140,4 +140,4 @@ def join_event(org_id, event_id):
 # Run the code
 if __name__ == '__main__':
     # run your app
-    app.run(port=4242)
+    app.run(host='0.0.0.0', port=8000)
