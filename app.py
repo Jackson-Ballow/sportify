@@ -133,7 +133,9 @@ def organization_events(org_id):
 @app.route('/organization/<int:org_id>/events/<int:event_id>/', methods=['GET'])
 def join_event(org_id, event_id):
     # Code to add a user to an event here...
-    return redirect(f'/organization/{org_id}/')
+    temp = "/organization/{org}/"
+
+    return redirect(temp.format(org=org_id))
 
 # Run the code
 if __name__ == '__main__':
