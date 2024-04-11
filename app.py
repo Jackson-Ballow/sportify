@@ -76,7 +76,7 @@ def register():
         return render_template('register.html')
 
     elif request.method == 'POST':
-        fullname = request.form.get('fullname')
+        fullname = request.form.get('name')
         email = request.form.get('email')
         password = request.form.get('password')
         file = request.files['imageUpload']
