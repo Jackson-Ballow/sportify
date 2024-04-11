@@ -1,15 +1,20 @@
 from flask import Flask, request, render_template, redirect, jsonify, session, send_file, url_for, flash
 from flask_bootstrap import Bootstrap
 import cx_Oracle
+from datetime import datetime
+
 
 app = Flask(__name__)
 bootstrap = Bootstrap(app)
 
-user = True
+user = False
 
 ### EXAMPLE CONNECTION TO DATABASE -- REMOVE LATER ###
 connection = cx_Oracle.connect('jballow/jballow@localhost:1521/XE')
+
+'''
 cursor = connection.cursor()
+
 
 cursor.execute('SELECT * FROM cat')
 rows = cursor.fetchall()
@@ -17,6 +22,7 @@ print(rows)
 
 cursor.close()
 connection.close()
+'''
 
 ##### Here are the routes that do not need to worry about admin status #####
 
@@ -34,14 +40,59 @@ def home():
 # Login Page
 @app.route('/login/', methods=['GET', 'POST'])
 def login():
-    return render_template('login.html')
+    global connection
+
+    if user:
+        return redirect('/')
+
+    if request.method == 'GET':
+        return render_template('login.html')
+
+    elif request.method == 'POST':
+        email = request.form.get('email')
+        password = request.form.get('password')
+
+        with connection.cursor() as cursorObject:
+            sql = "SELECT * FROM users WHERE email = '{email}' and password = '{password}'"
+            sql = sql.format(email=email, password=password)
+            cursorObject.execute(sql)
+            myResult = cursorObject.fetchall()
+
+        if myResult and len(myResult) > 0:
+            return 'yes'
+        
+        return 'no'
 
 
 # Registeration Page
 @app.route('/register/', methods=['GET', 'POST'])
 def register():
-    return render_template('register.html')
+    global connection
 
+    if user:
+        return redirect('/')
+
+    if request.method == 'GET':
+        return render_template('register.html')
+
+    elif request.method == 'POST':
+        fullname = request.form.get('fullname')
+        email = request.form.get('email')
+        password = request.form.get('password')
+        file = request.files['imageUpload']
+        
+        if file.filename == '':
+            return 'No selected file'
+
+        file_data = file.read()
+
+        sql = "INSERT INTO users (user_id, fullname, email, password, profile_picture) VALUES ((SELECT COALESCE(MAX(user_id), 0) + 1 FROM users), '{}', '{}', '{}', :blob_data)".format(fullname, email, password)
+
+        with connection.cursor() as cursorObject:
+            cursorObject.execute(sql, [file_data])
+            connection.commit()
+
+        return 'yes'
 
 # Page to create an organization
 @app.route('/create_organization/', methods=['GET', 'POST'])
