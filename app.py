@@ -1,10 +1,22 @@
 from flask import Flask, request, render_template, redirect, jsonify, session, send_file, url_for, flash
 from flask_bootstrap import Bootstrap
+import cx_Oracle
 
 app = Flask(__name__)
 bootstrap = Bootstrap(app)
 
 user = True
+
+### EXAMPLE CONNECTION TO DATABASE -- REMOVE LATER ###
+connection = cx_Oracle.connect('jballow/jballow@localhost:1521/XE')
+cursor = connection.cursor()
+
+cursor.execute('SELECT * FROM cat')
+rows = cursor.fetchall()
+print(rows)
+
+cursor.close()
+connection.close()
 
 ##### Here are the routes that do not need to worry about admin status #####
 
