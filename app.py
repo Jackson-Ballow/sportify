@@ -42,9 +42,6 @@ def home():
 def login():
     global connection
 
-    if user:
-        return redirect('/')
-
     if request.method == 'GET':
         return render_template('login.html')
 
@@ -68,9 +65,6 @@ def login():
 @app.route('/register/', methods=['GET', 'POST'])
 def register():
     global connection
-
-    if user:
-        return redirect('/')
 
     if request.method == 'GET':
         return render_template('register.html')
@@ -97,7 +91,31 @@ def register():
 # Page to create an organization
 @app.route('/create_organization/', methods=['GET', 'POST'])
 def create_organization():
-    return render_template('create_organization.html')
+    global connection
+
+    if request.method == 'GET':
+        return render_template('create_organization.html')
+
+    elif request.method == 'POST':
+        org_name = request.form.get('org_name')
+        bio = request.form.get('bio')
+        file = request.files['imageUpload']
+
+        if file.filename == '':
+            return 'No selected file'
+
+        file_data = file.read()
+
+        sql = "INSERT INTO organizations (org_id, name, bio, profile_picture) VALUES ((SELECT COALESCE(MAX(org_id), 0) + 1 FROM organizations), '{}', '{}', :blob_data)".format(org_name, bio)
+
+        with connection.cursor() as cursorObject:
+            cursorObject.execute(sql, [file_data])
+
+            # TODO ADD THE USER THAT CREATED THE ORG TO organizations_admins
+
+            connection.commit()
+
+        return 'yes'
 
 
 # About us page - this should not need to change
