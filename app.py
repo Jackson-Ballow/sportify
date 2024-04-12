@@ -2,12 +2,14 @@ from flask import Flask, request, render_template, redirect, jsonify, session, s
 from flask_bootstrap import Bootstrap
 import cx_Oracle
 from datetime import datetime
+import base64
+from io import BytesIO
 
 
 app = Flask(__name__)
 bootstrap = Bootstrap(app)
 
-user = False
+app.config["SECRET_KEY"] = 'Verysecr3tkey'
 
 ### EXAMPLE CONNECTION TO DATABASE -- REMOVE LATER ###
 connection = cx_Oracle.connect('jballow/jballow@localhost:1521/XE')
@@ -29,9 +31,13 @@ connection.close()
 # Home page
 @app.route('/', methods=['GET'])
 def home():
+
+    if 'user' not in session:
+        session['user'] = None
+
     # Change the template based on whether or not the user is logged in
-    if user:
-        return render_template('home_user.html', org_list=[1, 2, 3], user=user)
+    if session['user']:
+        return render_template('home_user.html', org_list=[1, 2, 3], user=session['user'])
 
     else:
         return render_template('home_no_user.html')
@@ -56,7 +62,8 @@ def login():
             myResult = cursorObject.fetchall()
 
         if myResult and len(myResult) > 0:
-            return 'yes'
+            session['user'] = myResult[0][0]
+            return redirect('/')
         
         return 'no'
 
@@ -167,14 +174,47 @@ def profile():
 # Homepage for the organization
 @app.route('/organization/<int:org_id>/', methods=['GET'])
 def organization(org_id):
-    return render_template('organization_home.html', organization_name='Notre Dame', org_id=0)
+    return render_template('organization_home.html', organization_name='Notre Dame', org_id=org_id)
 
 
 # Posts for the organization
 @app.route('/organization/<int:org_id>/posts/', methods=['GET', 'POST'])
 def organization_posts(org_id):
-    return render_template('organization_posts.html', organization_name='Notre Dame', org_id=0, post_list=[1, 2, 3])
+    global connection
 
+    if request.method == 'GET':
+        with connection.cursor() as cursorObject:
+            sql = "SELECT p.post_id, p.title, p.text, u.fullname, u.profile_picture FROM posts p, users u WHERE p.user_id = u.user_id and p.user_id = {} and p.org_id = {} ORDER BY p.post_id DESC".format(session['user'], org_id)
+            cursorObject.execute(sql)
+            post_list = cursorObject.fetchall()
+
+            sql = "SELECT name FROM organizations WHERE org_id = {}".format(org_id)
+            cursorObject.execute(sql)
+            organization_name = cursorObject.fetchall()[0][0]
+
+            post_list = list(post_list)
+            for i, post in enumerate(post_list):
+                if post[4] is not None:
+                    image_stream = BytesIO(post[4].read())
+                    image_data = base64.b64encode(image_stream.getvalue()).decode('utf-8')
+                    post = list(post)
+                    post[4] = f"data:image/jpeg;base64,{image_data}"
+                    post_list[i] = tuple(post)
+
+        return render_template('organization_posts.html', organization_name=organization_name, post_list=post_list, org_id=org_id, user=session['user'])
+
+    elif request.method == 'POST':
+        title = request.form.get('post_title')
+        text = request.form.get('post_content')
+
+        sql = "INSERT INTO posts (post_id, user_id, org_id, title, text) VALUES ((SELECT COALESCE(MAX(post_id), 0) + 1 FROM posts), {}, {}, '{}', '{}')".format(session['user'], org_id, title.replace("'", "''"), text.replace("'", "''"))
+
+
+        with connection.cursor() as cursorObject:
+            cursorObject.execute(sql)
+            connection.commit()
+
+        return redirect('/organization/{}/posts'.format(org_id))
 
 # View and leave comments on a post
 @app.route('/organization/<int:org_id>/posts/<int:post_id>/', methods=['GET', 'POST'])
