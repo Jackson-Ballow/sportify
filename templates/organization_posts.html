@@ -41,16 +41,16 @@
             <br /> <br />
             <ul>
                 {% for post in post_list %}
-                <a href="/organization/{{ org_id }}/posts/0/" style="color: inherit; text-decoration: none; cursor: pointer;">
+		<a href="/organization/{{ org_id }}/posts/{{ post[0] }}/" style="color: inherit; text-decoration: none; cursor: pointer;">
                     <li style="list-style: none;">
                         <div class="row align-items-start">
                             <div class="col-md-4">
-                                <img class="org-logo" src="https://www.polaris-cc.com/logo/" />
+                                <img class="org-logo" src="{{ post[4] }}" />
                             </div>
                             <div class="col-md-8">
                                 <br />
-                                <h2>Post Title</h2>
-                                <p><i>Author's Name</i><br />Here is the text for a post in this sample post list</p>
+				<h2>{{ post[1] }}</h2>
+				<p><i>{{ post[3] }}</i><br />{{ post[2] }}</p>
                             </div>
                         </div>
                     </li>
