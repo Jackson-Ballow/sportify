@@ -38,17 +38,17 @@
             <br /> <br />
             <ul>
                 {% for event in event_list %}
-                <a href="/organization/{{ org_id }}/events/0/"
+                <a href="/organization/{{ org_id }}/events/{{ event[0] }}/"
                     style="color: inherit; text-decoration: none; cursor: pointer;">
                     <li style="list-style: none;">
                         <div class="row align-items-start">
                             <div class="col-md-4">
-                                <img class="org-logo" src="https://www.polaris-cc.com/logo/" />
+                                <img class="org-logo" src="{{ event[4] }}" />
                             </div>
                             <div class="col-md-8">
                                 <br />
-                                <h2>Event Title</h2>
-                                <p><i>Name of Host</i><br />Text Description of the event</p>
+                                <h2>{{ event[1] }}</h2>
+                                <p><i>{{ event[2] }}</i><br />{{ event[3] }}</p>
                             </div>
                         </div>
                     </li>

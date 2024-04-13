@@ -22,7 +22,7 @@
                             <form method="post">
                                 <div class="form-group">
                                     <label for="post_content">Comment Content</label>
-                                    <textarea class="form-control" id="post_content" name="post_content" rows="4"
+                                    <textarea class="form-control" id="comment_content" name="comment_content" rows="4"
                                         cols="50"></textarea>
                                 </div>
                                 <div class="modal-footer">
@@ -38,24 +38,24 @@
             <br /> <br />
             <div class="row align-items-start">
                 <div class="col-md-4">
-                    <img class="org-logo" src="https://www.polaris-cc.com/logo/" />
+                    <img class="org-logo" src="{{ post[4] }}" />
                 </div>
                 <div class="col-md-8">
                     <br />
-                    <h2>Original Post Title</h2>
-                    <p><i>Author's Name</i><br />Here is the text for a post in this sample post list</p>
+                    <h2>{{ post[1] }}</h2>
+                    <p><i>{{ post[3] }}</i><br />{{ post[2] }}</p>
                 </div>
             </div>
             <ul>
-                {% for post in comment_list %}
+                {% for comment in comment_list %}
                     <li style="list-style: none;">
                         <div class="row align-items-start">
                             <div class="col-md-4">
-                                <img class="comment-pfp" src="https://www.polaris-cc.com/logo/" />
+                                <img class="comment-pfp" src="{{ comment[3] }}" />
                             </div>
                             <div class="col-md-8">
                                 <br />
-                                <p><i>Author's Name</i><br />Here is the text for a post in this sample post list</p>
+                                <p><i>{{ comment[2] }}</i><br />{{ comment[1] }}</p>
                             </div>
                         </div>
                     </li>

@@ -188,12 +188,32 @@ def profile():
 def organization(org_id):
     global connection
 
+    if not session['user']:
+        return redirect('/')
+
+    # confirm membership
     with connection.cursor() as cursorObject:
-            sql = "SELECT name FROM organizations WHERE org_id = {}".format(org_id)
-            cursorObject.execute(sql)
-            organization_name = cursorObject.fetchall()[0][0]
-    
-    return render_template('organization_home.html', organization_name=organization_name, org_id=org_id, user=session['user'])
+        sql = "SELECT * FROM users_organizations WHERE user_id={} AND org_id={}".format(session['user'], org_id)
+        cursorObject.execute(sql)
+        user_in_org = len(cursorObject.fetchall()) > 0
+
+        sql = "SELECT * FROM organizations_admins WHERE user_id={} AND org_id={}".format(session['user'], org_id)
+        cursorObject.execute(sql)
+        user_is_admin = len(cursorObject.fetchall()) > 0
+
+    if not user_in_org:
+        return redirect('/')
+
+
+    with connection.cursor() as cursorObject:
+        sql = "SELECT name FROM organizations WHERE org_id = {}".format(org_id)
+        cursorObject.execute(sql)
+        organization_name = cursorObject.fetchall()[0][0]
+
+    if not user_is_admin:
+        return render_template('organization_home.html', organization_name=organization_name, org_id=org_id, user=session['user'])
+    else:
+        return "we need a template for this" # render_template('organization_home.html', organization_name=organization_name, org_id=org_id, user=session['user'])
 
 
 # Posts for the organization
@@ -201,9 +221,23 @@ def organization(org_id):
 def organization_posts(org_id):
     global connection
 
+    if not session['user']:
+        return redirect('/')
+
+    # confirm membership
+    with connection.cursor() as cursorObject:
+        sql = "SELECT * FROM users_organizations WHERE user_id={} AND org_id={}".format(session['user'], org_id)
+        cursorObject.execute(sql)
+        user_in_org = len(cursorObject.fetchall()) > 0
+
+    if not user_in_org:
+        return redirect('/')
+
     if request.method == 'GET':
         with connection.cursor() as cursorObject:
-            sql = "SELECT p.post_id, p.title, p.text, u.fullname, u.profile_picture FROM posts p, users u WHERE p.user_id = u.user_id and p.user_id = {} and p.org_id = {} ORDER BY p.post_id DESC".format(session['user'], org_id)
+            # Note to Jackson: I changed this because I think we want people to see everyone's posts, not just their own
+            #sql = "SELECT p.post_id, p.title, p.text, u.fullname, u.profile_picture FROM posts p, users u WHERE p.user_id = u.user_id and p.user_id = {} and p.org_id = {} ORDER BY p.post_id DESC".format(session['user'], org_id)
+            sql = "SELECT p.post_id, p.title, p.text, u.fullname, u.profile_picture FROM posts p, users u WHERE p.user_id = u.user_id and p.org_id = {} ORDER BY p.post_id DESC".format(org_id)
             cursorObject.execute(sql)
             post_list = cursorObject.fetchall()
 
@@ -213,6 +247,7 @@ def organization_posts(org_id):
 
             post_list = list(post_list)
             for i, post in enumerate(post_list):
+                print(post[:4])
                 if post[4] is not None:
                     image_stream = BytesIO(post[4].read())
                     image_data = base64.b64encode(image_stream.getvalue()).decode('utf-8')
@@ -238,9 +273,70 @@ def organization_posts(org_id):
 # View and leave comments on a post
 @app.route('/organization/<int:org_id>/posts/<int:post_id>/', methods=['GET', 'POST'])
 def comments(org_id, post_id):
-    # This variable post will be the title, content, and pfp of the specific post_id
-    post = None
-    return render_template('comments.html', organization_name='Notre Dame', org_id=0, post=post, comment_list=[1, 2, 3])
+    if not session['user']:
+        return redirect('/')
+
+    # confirm membership
+    with connection.cursor() as cursorObject:
+        sql = "SELECT * FROM users_organizations WHERE user_id={} AND org_id={}".format(session['user'], org_id)
+        cursorObject.execute(sql)
+        user_in_org = len(cursorObject.fetchall()) > 0
+
+    if not user_in_org:
+        return redirect('/')
+
+    if request.method == 'GET':
+
+        with connection.cursor() as cursorObject:
+            # check post exists
+            sql = "SELECT p.post_id, p.title, p.text, u.fullname, u.profile_picture FROM posts p, users u WHERE p.user_id = u.user_id and p.org_id = {} ORDER BY p.post_id DESC".format(org_id)
+            cursorObject.execute(sql)
+            post = cursorObject.fetchall()
+
+            if not post:
+                return redirect("/organization/{}/posts/".format(org_id))
+
+            # get comments
+            sql = "SELECT c.comment_id, c.text, u.fullname, u.profile_picture FROM comments c, users u WHERE c.post_id = {} AND c.user_id = u.user_id ORDER BY c.comment_id DESC".format(post_id)
+            cursorObject.execute(sql)
+            comment_list = cursorObject.fetchall()
+
+
+
+            sql = "SELECT name FROM organizations WHERE org_id = {}".format(org_id)
+            cursorObject.execute(sql)
+            organization_name = cursorObject.fetchall()[0][0]
+
+            comment_list = list(comment_list)
+            for i, comment in enumerate(comment_list):
+                if comment[3] is not None:
+                    image_stream = BytesIO(comment[3].read())
+                    image_data = base64.b64encode(image_stream.getvalue()).decode('utf-8')
+                    comment = list(comment)
+                    comment[3] = f"data:image/jpeg;base64,{image_data}"
+                    comment_list[i] = tuple(comment)
+
+            post=post[0]
+            image_stream = BytesIO(post[4].read())
+            image_data = base64.b64encode(image_stream.getvalue()).decode('utf-8')
+            post = list(post)
+            post[4] = f"data:image/jpeg;base64,{image_data}"
+            post = tuple(post)
+
+
+        return render_template('comments.html', organization_name=organization_name, org_id=org_id, post=post, comment_list=comment_list)
+
+
+    elif request.method == 'POST':
+        text = request.form.get('comment_content')
+
+        sql = "INSERT INTO comments (comment_id, user_id, post_id, text) VALUES ((SELECT COALESCE(MAX(post_id), 0) + 1 FROM posts), {}, {}, '{}')".format(session['user'], post_id, text.replace("'", "''"))
+
+        with connection.cursor() as cursorObject:
+            cursorObject.execute(sql)
+            connection.commit()
+
+        return redirect('/organization/{}/posts/{}'.format(org_id, post_id))
 
 
 # Page to view the stats of every game for each sport for an organization
@@ -267,10 +363,45 @@ def organization_stats(org_id):
 
     return render_template('organization_stats.html', user=session['user'], organization_name="Notre Dame", basketball_list=basketball_list, football_list=football_list, soccer_list=soccer_list)
 
-# Page to view the stats of every game for each sport for an organization
+
 @app.route('/organization/<int:org_id>/events/', methods=['GET'])
 def organization_events(org_id):
-    return render_template('organization_events.html', user=session['user'], org_id=0, organization_name="Notre Dame", event_list=[1, 2, 3])
+    if not session['user']:
+        return redirect('/')
+
+    # confirm membership
+    with connection.cursor() as cursorObject:
+        sql = "SELECT * FROM users_organizations WHERE user_id={} AND org_id={}".format(session['user'], org_id)
+        cursorObject.execute(sql)
+        user_in_org = len(cursorObject.fetchall()) > 0
+
+    if not user_in_org:
+        return redirect('/')
+
+    
+    with connection.cursor() as cursorObject:
+            today = str(datetime.today()).split(' ')[0]
+
+            # show events that have not ended yet - I don't know why the date isn't working here
+            sql = "SELECT event_id, event_name, sport_name, event_bio, event_logo FROM events WHERE org_id={}".format(org_id)
+            #sql = "SELECT event_name, sport_name, event_bio, event_logo FROM events WHERE org_id={} AND end_date >= TO_DATE('{}', 'YYYY-MM-DD')".format(org_id, today)
+            cursorObject.execute(sql)
+            event_list = cursorObject.fetchall()
+
+            sql = "SELECT name FROM organizations WHERE org_id = {}".format(org_id)
+            cursorObject.execute(sql)
+            organization_name = cursorObject.fetchall()[0][0]
+
+            event_list = list(event_list)
+            for i, event in enumerate(event_list):
+                if event[4] is not None:
+                    image_stream = BytesIO(event[4].read())
+                    image_data = base64.b64encode(image_stream.getvalue()).decode('utf-8')
+                    event = list(event)
+                    event[4] = f"data:image/jpeg;base64,{image_data}"
+                    event_list[i] = tuple(event)
+
+    return render_template('organization_events.html', user=session['user'], org_id=org_id, organization_name=organization_name, event_list=event_list)
 
 
 @app.route('/organization/<int:org_id>/events/<int:event_id>/', methods=['GET'])
@@ -294,6 +425,10 @@ def add_header(response):
     response.headers["Expires"] = "0"
     response.headers['Cache-Control'] = 'public, max-age=0'
     return response
+
+@app.errorhandler(404)
+def not_found(e):
+    return "We can't find that page. Or maybe the site is just broken because you aren't using a Mac."
 
 
 # Run the code
