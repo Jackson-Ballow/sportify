@@ -2,7 +2,7 @@
 
 {% block tab_title %}Home{% endblock %}
 
-{% block title %}Welcome To Athlete Website{% endblock %}
+{% block title %}Welcome To Sportify{% endblock %}
 
 {% block content %}
 <section class="account">
@@ -12,16 +12,16 @@
             <br />
             <ul>
             {% for org in org_list %}
-                <a href="/organization/0/" style="color: inherit; text-decoration: none; cursor: pointer;">
+	    <a href="/organization/{{ org[0] }}/" style="color: inherit; text-decoration: none; cursor: pointer;">
                     <li style="list-style: none;">
                         <div class="row align-items-start">
                             <div class="col-md-4">
-                                <img class="org-logo" src="https://www.polaris-cc.com/logo/" />
+				    <img class="org-logo" src="{{ org[2] }}" />
                             </div>
                             <div class="col-md-8">
                                 <br />
-                                <h2>Organization Name</h2>
-                                <p>Here is the organization's description that I made longer to make sure it goes onto a new line</p>
+				<h2>{{ org[1] }}</h2>
+				<p>{{ org[3] }}</p>
                             </div>
                         </div>
                     </li>
