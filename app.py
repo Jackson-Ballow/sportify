@@ -14,30 +14,36 @@ app.config["SECRET_KEY"] = 'Verysecr3tkey'
 ### EXAMPLE CONNECTION TO DATABASE -- REMOVE LATER ###
 connection = cx_Oracle.connect('jballow/jballow@localhost:1521/XE')
 
-'''
-cursor = connection.cursor()
-
-
-cursor.execute('SELECT * FROM cat')
-rows = cursor.fetchall()
-print(rows)
-
-cursor.close()
-connection.close()
-'''
-
 ##### Here are the routes that do not need to worry about admin status #####
 
 # Home page
 @app.route('/', methods=['GET'])
 def home():
+    global connection
 
     if 'user' not in session:
         session['user'] = None
 
     # Change the template based on whether or not the user is logged in
     if session['user']:
-        return render_template('home_user.html', org_list=[1, 2, 3], user=session['user'])
+        # Get the list of organizations the user is in
+        with connection.cursor() as cursorObject:
+            sql = "SELECT u.org_id, o.name, o.profile_picture, o.bio FROM users_organizations u JOIN organizations o ON u.org_id = o.org_id WHERE u.user_id = {}".format(session['user'])
+
+            cursorObject.execute(sql)
+            org_list = cursorObject.fetchall()
+
+            org_list = list(org_list)
+            for i, org in enumerate(org_list):
+                if org[2] is not None:
+                    image_stream = BytesIO(org[2].read())
+                    image_data = base64.b64encode(image_stream.getvalue()).decode('utf-8')
+                    org = list(org)
+                    org[2] = f"data:image/jpeg;base64,{image_data}"
+                    org_list[i] = tuple(org)
+
+
+        return render_template('home_user.html', org_list=org_list, user=session['user'])
 
     else:
         return render_template('home_no_user.html')
@@ -80,11 +86,8 @@ def register():
         fullname = request.form.get('name')
         email = request.form.get('email')
         password = request.form.get('password')
-        file = request.files['imageUpload']
+        file = request.files['logo']
         
-        if file.filename == '':
-            return 'No selected file'
-
         file_data = file.read()
 
         sql = "INSERT INTO users (user_id, fullname, email, password, profile_picture) VALUES ((SELECT COALESCE(MAX(user_id), 0) + 1 FROM users), '{}', '{}', '{}', :blob_data)".format(fullname, email, password)
@@ -100,72 +103,81 @@ def register():
 def create_organization():
     global connection
 
+    if 'user' not in session or session['user'] is None:
+        return redirect('/login/')
+
     if request.method == 'GET':
-        return render_template('create_organization.html')
+        return render_template('create_organization.html', user=session['user'])
 
     elif request.method == 'POST':
         org_name = request.form.get('org_name')
         bio = request.form.get('bio')
-        file = request.files['imageUpload']
-
-        if file.filename == '':
-            return 'No selected file'
+        file = request.files['logo']
 
         file_data = file.read()
 
-        sql = "INSERT INTO organizations (org_id, name, bio, profile_picture) VALUES ((SELECT COALESCE(MAX(org_id), 0) + 1 FROM organizations), '{}', '{}', :blob_data)".format(org_name, bio)
+        sql = "INSERT INTO organizations (org_id, name, bio, profile_picture) VALUES ((SELECT COALESCE(MAX(org_id), 0) + 1 FROM organizations), :org_name, :bio, :blob_data)"
+
 
         with connection.cursor() as cursorObject:
-            cursorObject.execute(sql, [file_data])
+            cursorObject.execute(sql, {'org_name': org_name, 'bio': bio, 'blob_data': file_data})
 
-            # TODO ADD THE USER THAT CREATED THE ORG TO organizations_admins
+            # Get the new org_id
+            cursorObject.execute("SELECT MAX(org_id) FROM organizations")
+            org_id = cursorObject.fetchone()[0]
+
+            # Insert into users_organizations
+            user_org_sql = "INSERT INTO users_organizations (user_id, org_id) VALUES (:user_id, :org_id)"
+            cursorObject.execute(user_org_sql, {'user_id': session['user'], 'org_id': org_id})
+
+
+            # Insert into organizations_admins
+            user_org_sql = "INSERT INTO organizations_admins (user_id, org_id) VALUES (:user_id, :org_id)"
+            cursorObject.execute(user_org_sql, {'user_id': session['user'], 'org_id': org_id}) 
 
             connection.commit()
 
-        return 'yes'
+        return redirect('/')
 
 
 # About us page - this should not need to change
 @app.route('/about_us/', methods=['GET'])
 def about_us():
-    return render_template('about_us.html')
+    if 'user' not in session:
+        session['user'] = None
+
+    return render_template('about_us.html', user=session['user'])
 
 
 # Log out the user - clear the session and return a redirect to home
 @app.route('/logout/', methods=['GET'])
 def logout():
-    # TODO Uncomment once we actually have a session
-    # session.clear()
+    session.clear()
     return redirect('/')
 
 
 # Profile page to view stats and log out
 @app.route('/profile/', methods=['GET'])
 def profile():
-    # IMPORTANT, PLZ READ!
-    # Input Notes:
-    # For each sport, create a 2d array where each array inside consists of the following:
-    # Index 0: Event Name
-    # Index 1: Team 1's Name
-    # Index 2: Team 1's Score
-    # Index 3: Team 2's Name
-    # Index 4: Team 2's Score
+    global connection
 
-    # Input examples
-    basketball_list = [
-        ["Bookstore Basketball 2024", "Shrew's and the Gang", 16, "Other Lame Team", 21],
-        ["Bookstore Basketball 2024", "Massive Men", 21, "Losing Team", 16]       
-    ]
+    with connection.cursor() as cursorObject:
+        sql = "SELECT e.event_name, g.team1_name, g.team1_score, g.team2_name, g.team2_score FROM games g, games_users u, events e WHERE u.user_id = {} and u.game_id = g.game_id and g.event_id = e.event_id and e.sport_name = 'basketball'".format(session['user'])
+    
+        cursorObject.execute(sql)
+        basketball_list = cursorObject.fetchall()
 
-    football_list = [
-        ["2024 CFB Season", "Notre Dame", 55, "Georgia Tech", 0],
-        ["2024 CFB Season", "UGA", 45, "Georgia Tech", 0]       
-    ]
-
-    soccer_list = [
-        ["Some Soccer Season", "Milan", 2, "Manchester United", 0]
-    ]
-    return render_template('profile.html', user=user, basketball_list=basketball_list, football_list=football_list, soccer_list=soccer_list)
+        sql = "SELECT e.event_name, g.team1_name, g.team1_score, g.team2_name, g.team2_score FROM games g, games_users u, events e WHERE u.user_id = {} and u.game_id = g.game_id and g.event_id = e.event_id and e.sport_name = 'football'".format(session['user'])
+    
+        cursorObject.execute(sql)
+        football_list = cursorObject.fetchall()
+    
+        sql = "SELECT e.event_name, g.team1_name, g.team1_score, g.team2_name, g.team2_score FROM games g, games_users u, events e WHERE u.user_id = {} and u.game_id = g.game_id and g.event_id = e.event_id and e.sport_name = 'soccer'".format(session['user'])
+    
+        cursorObject.execute(sql)
+        soccer_list = cursorObject.fetchall()
+    
+    return render_template('profile.html', user=session['user'], basketball_list=basketball_list, football_list=football_list, soccer_list=soccer_list)
 
 
 ##### START WORRYING ABOUT ADMIN STATUS HERE #####
@@ -174,7 +186,14 @@ def profile():
 # Homepage for the organization
 @app.route('/organization/<int:org_id>/', methods=['GET'])
 def organization(org_id):
-    return render_template('organization_home.html', organization_name='Notre Dame', org_id=org_id)
+    global connection
+
+    with connection.cursor() as cursorObject:
+            sql = "SELECT name FROM organizations WHERE org_id = {}".format(org_id)
+            cursorObject.execute(sql)
+            organization_name = cursorObject.fetchall()[0][0]
+    
+    return render_template('organization_home.html', organization_name=organization_name, org_id=org_id, user=session['user'])
 
 
 # Posts for the organization
@@ -227,28 +246,31 @@ def comments(org_id, post_id):
 # Page to view the stats of every game for each sport for an organization
 @app.route('/organization/<int:org_id>/stats/', methods=['GET'])
 def organization_stats(org_id):
-    # For detail on how the data is ordered, view the route for profile
+    global connection
 
-    basketball_list = [
-        ["Bookstore Basketball 2024", "Shrew's and the Gang", 16, "Other Lame Team", 21],
-        ["Bookstore Basketball 2024", "Massive Men", 21, "Losing Team", 16]       
-    ]
+    with connection.cursor() as cursorObject:
+        sql = "SELECT e.event_name, g.team1_name, g.team1_score, g.team2_name, g.team2_score FROM games g, games_users u, events e WHERE e.org_id = {} and u.game_id = g.game_id and g.event_id = e.event_id and e.sport_name = 'basketball'".format(org_id)
+    
+        cursorObject.execute(sql)
+        basketball_list = cursorObject.fetchall()
 
-    football_list = [
-        ["2024 CFB Season", "Notre Dame", 55, "Georgia Tech", 0],
-        ["2024 CFB Season", "UGA", 45, "Georgia Tech", 0]       
-    ]
+        sql = "SELECT e.event_name, g.team1_name, g.team1_score, g.team2_name, g.team2_score FROM games g, games_users u, events e WHERE e.org_id = {} and u.game_id = g.game_id and g.event_id = e.event_id and e.sport_name = 'football'".format(org_id)
+    
+        cursorObject.execute(sql)
+        football_list = cursorObject.fetchall()
+    
+        sql = "SELECT e.event_name, g.team1_name, g.team1_score, g.team2_name, g.team2_score FROM games g, games_users u, events e WHERE e.org_id = {} and u.game_id = g.game_id and g.event_id = e.event_id and e.sport_name = 'soccer'".format(org_id)
+    
+        cursorObject.execute(sql)
+        soccer_list = cursorObject.fetchall()
+    
 
-    soccer_list = [
-        ["Some Soccer Season", "Milan", 2, "Manchester United", 0]
-    ]
-
-    return render_template('organization_stats.html', user=user, organization_name="Notre Dame", basketball_list=basketball_list, football_list=football_list, soccer_list=soccer_list)
+    return render_template('organization_stats.html', user=session['user'], organization_name="Notre Dame", basketball_list=basketball_list, football_list=football_list, soccer_list=soccer_list)
 
 # Page to view the stats of every game for each sport for an organization
 @app.route('/organization/<int:org_id>/events/', methods=['GET'])
 def organization_events(org_id):
-    return render_template('organization_events.html', user=user, org_id=0, organization_name="Notre Dame", event_list=[1, 2, 3])
+    return render_template('organization_events.html', user=session['user'], org_id=0, organization_name="Notre Dame", event_list=[1, 2, 3])
 
 
 @app.route('/organization/<int:org_id>/events/<int:event_id>/', methods=['GET'])
@@ -257,6 +279,22 @@ def join_event(org_id, event_id):
     temp = "/organization/{org}/"
 
     return redirect(temp.format(org=org_id))
+
+
+
+@app.route('/hire/', methods=['GET'])
+def hire():
+    return "We aren't recruiting, idk why you clicked this"
+
+# I really have no idea what this caching stuff does
+@app.after_request
+def add_header(response):
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    response.headers['Cache-Control'] = 'public, max-age=0'
+    return response
+
 
 # Run the code
 if __name__ == '__main__':
