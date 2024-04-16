@@ -2,3 +2,4 @@ flask
 flask-bootstrap
 contextvars
 cx_Oracle
+bcrypt
