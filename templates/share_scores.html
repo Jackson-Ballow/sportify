@@ -1,0 +1,103 @@
+{% extends 'template.html' %}
+
+{% block tab_title %}Share Score {% endblock %}
+
+{% block title %}Share Scores{% endblock %}
+
+{% block content %}
+<section class="account">
+    <div class="container">
+        <div class="login">
+            <form class="login-form" method="post" onsubmit="return validateTeams();">
+                <h3>Share A Score For An Event</h3>
+
+                <div class="form-group">
+                    <label for="event">Event Name:</label>
+                    <select name="event" id="event" class="form-control">
+                        {% for event in events %}
+                            <option value="{{ event[0] }}">{{ event[1] }}</option>
+                        {% endfor %}
+                    </select>
+		</div><br />
+
+                <div class="form-group">
+                    <label for="team1">Team 1 Name:</label>
+                    <select name="team1" id="team1" class="form-control">
+                    </select>
+		</div>
+
+		<div class="row mt-3">
+		    <div class="col-lg-12 col-md-12 col-sm-12">
+		        <input type="number" name="team1_score" id="team1_score" class="form-control" style="background-color: white;"
+			placeholder="Score For Team 1" required>
+		    </div>
+		</div><br />
+
+                <div class="form-group">
+                    <label for="team2">Team 2 Name:</label>
+                    <select name="team2" id="team2" class="form-control">
+                    </select>
+                </div>
+
+		<div class="row mt-3">
+		    <div class="col-lg-12 col-md-12 col-sm-12">
+		        <input type="number" name="team2_score" id="team2_score" class="form-control" style="background-color: white;"
+			placeholder="Score For Team 2" required>
+		    </div>
+		</div>
+                
+		<button type="submit" class="btn form-btn">Share Score</button>
+            </form>
+            <br>
+        </div>
+    </div>
+</section>
+
+<script>
+    var events = {{ events | tojson | safe }}; // Convert Python list to JavaScript array
+
+    document.getElementById('event').addEventListener('change', function() {
+        var selectedEventId = this.value;
+        var selectedEvent = events.find(function(event) {
+            return event[0] == selectedEventId;
+        });
+
+        var teams = selectedEvent[2]; // Teams are stored in the third element of the event tuple
+
+        var teamDropdown1 = document.getElementById('team1');
+        var teamDropdown2 = document.getElementById('team2');
+        teamDropdown1.innerHTML = ''; // Clear existing options
+        teamDropdown2.innerHTML = ''; // Clear existing options
+
+        teams.forEach(function(team) {
+            var option1 = document.createElement('option');
+            option1.value = team[0];
+            option1.text = team[1];
+            teamDropdown1.appendChild(option1);
+
+            var option2 = document.createElement('option');
+            option2.value = team[0];
+            option2.text = team[1];
+            teamDropdown2.appendChild(option2);
+        });
+    });
+
+    // Trigger change event on page load to populate teams for the initial event
+    document.getElementById('event').dispatchEvent(new Event('change'));
+
+    // Function to ensure that Team 1 name and Team 2 name are different
+    function validateTeams() {
+        var team1 = document.getElementById('team1').value;
+        var team2 = document.getElementById('team2').value;
+
+        if (team1 === team2) {
+            alert("Please select different teams for Team 1 and Team 2.");
+            return false;
+        }
+        return true;
+    }
+</script>
+
+
+{% endblock %}
+

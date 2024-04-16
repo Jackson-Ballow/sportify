@@ -210,10 +210,8 @@ def organization(org_id):
         cursorObject.execute(sql)
         organization_name = cursorObject.fetchall()[0][0]
 
-    if not user_is_admin:
-        return render_template('organization_home.html', organization_name=organization_name, org_id=org_id, user=session['user'])
-    else:
-        return "we need a template for this" # render_template('organization_home.html', organization_name=organization_name, org_id=org_id, user=session['user'])
+    admin = True
+    return render_template('organization_home.html', admin=admin, organization_name=organization_name, org_id=org_id, user=session['user'])
 
 
 # Posts for the organization
@@ -411,6 +409,22 @@ def join_event(org_id, event_id):
 
     return redirect(temp.format(org=org_id))
 
+
+
+# Create an event
+@app.route('/organization/<int:org_id>/create_events/', methods=['GET', 'POST'])
+def create_events(org_id):
+    return render_template('create_events.html')
+
+
+# Create a stat
+@app.route('/organization/<int:org_id>/share_scores/', methods=['GET', 'POST'])
+def share_scores(org_id):
+    test_list = [
+            [0, 'Event 1', [[0, 'E1 T1'], [1,'E1 T2']] ],
+            [1, 'Event 2', [[2, 'E2 T1'], [3, 'E2 T2']] ]
+            ]
+    return render_template('share_scores.html', events=test_list)
 
 
 @app.route('/hire/', methods=['GET'])

@@ -7,7 +7,44 @@
 {% block content %}
 <section class="account">
     <div class="container">
-        <div class="home-body">
+        <div class="home-body">	
+	    {% if admin %}
+	    <div class="row">
+                <div class="col-lg-4">
+                    <div class="card rounded-3 m-2">
+                        <div class="card-body">
+                            <h5 class="card-title"><b>Manage Users</b></h5>
+                            <p class="card-text">
+                                Add users to your organization or remove them. Also manage the admins within your organization.
+                            </p>
+                            <a href="/organization/{{ org_id }}/manage_users/" class="btn form-btn">Manage Users</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-4">
+                    <div class="card rounded-3 m-2">
+                        <div class="card-body">
+                            <h5 class="card-title"><b>Create Events</b></h5>
+                            <p class="card-text">
+                                Create events for various different sports that users within your organization can view and will be able to join.
+			    </p>
+                            <a href="/organization/{{ org_id }}/create_events/" class="btn form-btn">Create Events</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-4">
+                    <div class="card rounded-3 m-2">
+                        <div class="card-body">
+                            <h5 class="card-title"><b>Share Scores</b></h5>
+                            <p class="card-text">
+                                Share the scores of different games across various events that can be viewed by members within your organization.
+			    </p>
+                            <a href="/organization/{{ org_id }}/share_scores/" class="btn form-btn">Share Scores</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+	    {% endif %}
             <div class="row">
                 <div class="col-lg-4">
                     <div class="card rounded-3 m-2">

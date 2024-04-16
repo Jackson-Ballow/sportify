@@ -1,0 +1,65 @@
+{% extends 'template.html' %}
+
+{% block tab_title %}Create Events{% endblock %}
+
+{% block title %}Create An Event{% endblock %}
+
+{% block content %}
+    <section class="account">
+        <div class="container">
+            <div class="login">
+                <form class="login-form" method="post">
+                    <h3>Create Event</h3>
+
+                    <div class="row mt-3">
+                        <div class="col-lg-12 col-md-12 col-sm-12">
+                            <input type="text" name="event_name" id="event_name" class="form-control"
+                                placeholder="Event Name" required>
+                        </div>
+                    </div>
+
+                    <div class="row mt-3">
+                        <div class="col-lg-12 col-md-12 col-sm-12">
+                            <textarea name="event_bio" id="event_bio" class="form-control" rows="4"
+                                placeholder="Event Bio" required></textarea>
+                        </div>
+                    </div>
+
+                    <div class="row mt-3">
+                        <div class="col-lg-12 col-md-12 col-sm-12">
+                            <select name="sport_name" id="sport_name" class="form-control" required>
+                                <option value="" selected disabled>Select Sport</option>
+                                <option value="football">Football</option>
+                                <option value="basketball">Basketball</option>
+                                <option value="soccer">Soccer</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row mt-3">
+                        <div class="col-lg-6 col-md-6 col-sm-6">
+			    <label for="start_date">Start Date</label>
+                            <input type="date" name="start_date" id="start_date" class="form-control" required>
+                        </div>
+                        <div class="col-lg-6 col-md-6 col-sm-6">
+				<label for="end_date">End Date</label>
+                            <input type="date" name="end_date" id="end_date" class="form-control" required>
+                        </div>
+                    </div>
+
+
+                    <div class="row mt-3">
+                        <div class="col-lg-12 col-md-12 col-sm-12">
+                            <input type="number" name="capacity" id="capacity" class="form-control"
+                                placeholder="Event Capacity" required></input>
+                        </div>
+		    </div>
+
+                    <button type="submit" class="btn form-btn">Create Event</button>
+                </form>
+                <br>
+            </div>
+        </div>
+    </section>
+{% endblock %}
+
