@@ -33,17 +33,10 @@ def home():
             cursorObject.execute(sql)
             org_list = cursorObject.fetchall()
 
-            org_list = list(org_list)
-            for i, org in enumerate(org_list):
-                if org[2] is not None:
-                    image_stream = BytesIO(org[2].read())
-                    image_data = base64.b64encode(image_stream.getvalue()).decode('utf-8')
-                    org = list(org)
-                    org[2] = f"data:image/jpeg;base64,{image_data}"
-                    org_list[i] = tuple(org)
+            org_list_photos = []
+            process_list_with_images(org_list, org_list_photos, 2)
 
-
-        return render_template('home_user.html', org_list=org_list, user=session['user'])
+        return render_template('home_user.html', org_list=org_list_photos, user=session['user'])
 
     else:
         return render_template('home_no_user.html')
@@ -152,6 +145,9 @@ def about_us():
 # Log out the user - clear the session and return a redirect to home
 @app.route('/logout/', methods=['GET'])
 def logout():
+    if not session['user']:
+        return redirect('/')
+
     session.clear()
     return redirect('/')
 
@@ -160,6 +156,9 @@ def logout():
 @app.route('/profile/', methods=['GET'])
 def profile():
     global connection
+
+    if not session['user']:
+        return redirect('/')
 
     with connection.cursor() as cursorObject:
         sql = "SELECT e.event_name, g.team1_name, g.team1_score, g.team2_name, g.team2_score FROM games g, games_users u, events e WHERE u.user_id = {} and u.game_id = g.game_id and g.event_id = e.event_id and e.sport_name = 'basketball'".format(session['user'])
@@ -191,24 +190,16 @@ def organization(org_id):
     if not session['user']:
         return redirect('/')
 
-    # confirm membership
-    with connection.cursor() as cursorObject:
-        sql = "SELECT * FROM users_organizations WHERE user_id={} AND org_id={}".format(session['user'], org_id)
-        cursorObject.execute(sql)
-        user_in_org = len(cursorObject.fetchall()) > 0
+    usr = membership(session['user'], org_id)
 
-        sql = "SELECT * FROM organizations_admins WHERE user_id={} AND org_id={}".format(session['user'], org_id)
-        cursorObject.execute(sql)
-        user_is_admin = len(cursorObject.fetchall()) > 0
-
-    if not user_in_org:
+    if not usr["is_member"]:
         return redirect('/')
-
 
     with connection.cursor() as cursorObject:
         sql = "SELECT name FROM organizations WHERE org_id = {}".format(org_id)
         cursorObject.execute(sql)
         organization_name = cursorObject.fetchall()[0][0]
+
 
     admin = True
     return render_template('organization_home.html', admin=admin, organization_name=organization_name, org_id=org_id, user=session['user'])
@@ -222,13 +213,9 @@ def organization_posts(org_id):
     if not session['user']:
         return redirect('/')
 
-    # confirm membership
-    with connection.cursor() as cursorObject:
-        sql = "SELECT * FROM users_organizations WHERE user_id={} AND org_id={}".format(session['user'], org_id)
-        cursorObject.execute(sql)
-        user_in_org = len(cursorObject.fetchall()) > 0
+    usr = membership(session['user'], org_id)
 
-    if not user_in_org:
+    if not usr["is_member"]:
         return redirect('/')
 
     if request.method == 'GET':
@@ -243,17 +230,10 @@ def organization_posts(org_id):
             cursorObject.execute(sql)
             organization_name = cursorObject.fetchall()[0][0]
 
-            post_list = list(post_list)
-            for i, post in enumerate(post_list):
-                print(post[:4])
-                if post[4] is not None:
-                    image_stream = BytesIO(post[4].read())
-                    image_data = base64.b64encode(image_stream.getvalue()).decode('utf-8')
-                    post = list(post)
-                    post[4] = f"data:image/jpeg;base64,{image_data}"
-                    post_list[i] = tuple(post)
+            post_list_photos = []
+            process_list_with_images(post_list, post_list_photos, 4)
 
-        return render_template('organization_posts.html', organization_name=organization_name, post_list=post_list, org_id=org_id, user=session['user'])
+        return render_template('organization_posts.html', organization_name=organization_name, post_list=post_list_photos, org_id=org_id, user=session['user'])
 
     elif request.method == 'POST':
         title = request.form.get('post_title')
@@ -274,13 +254,9 @@ def comments(org_id, post_id):
     if not session['user']:
         return redirect('/')
 
-    # confirm membership
-    with connection.cursor() as cursorObject:
-        sql = "SELECT * FROM users_organizations WHERE user_id={} AND org_id={}".format(session['user'], org_id)
-        cursorObject.execute(sql)
-        user_in_org = len(cursorObject.fetchall()) > 0
+    usr = membership(session['user'], org_id)
 
-    if not user_in_org:
+    if not usr["is_member"]:
         return redirect('/')
 
     if request.method == 'GET':
@@ -299,36 +275,24 @@ def comments(org_id, post_id):
             cursorObject.execute(sql)
             comment_list = cursorObject.fetchall()
 
-
-
             sql = "SELECT name FROM organizations WHERE org_id = {}".format(org_id)
             cursorObject.execute(sql)
             organization_name = cursorObject.fetchall()[0][0]
 
-            comment_list = list(comment_list)
-            for i, comment in enumerate(comment_list):
-                if comment[3] is not None:
-                    image_stream = BytesIO(comment[3].read())
-                    image_data = base64.b64encode(image_stream.getvalue()).decode('utf-8')
-                    comment = list(comment)
-                    comment[3] = f"data:image/jpeg;base64,{image_data}"
-                    comment_list[i] = tuple(comment)
+            comment_list_photos = []
+            process_list_with_images(comment_list, comment_list_photos, 3)
 
-            post=post[0]
-            image_stream = BytesIO(post[4].read())
-            image_data = base64.b64encode(image_stream.getvalue()).decode('utf-8')
-            post = list(post)
-            post[4] = f"data:image/jpeg;base64,{image_data}"
-            post = tuple(post)
+            post_photo = []
+            process_list_with_images(post, post_photo, 4)
 
 
-        return render_template('comments.html', organization_name=organization_name, org_id=org_id, post=post, comment_list=comment_list)
+        return render_template('comments.html', organization_name=organization_name, org_id=org_id, post=post_photo[0], comment_list=comment_list_photos)
 
 
     elif request.method == 'POST':
         text = request.form.get('comment_content')
 
-        sql = "INSERT INTO comments (comment_id, user_id, post_id, text) VALUES ((SELECT COALESCE(MAX(post_id), 0) + 1 FROM posts), {}, {}, '{}')".format(session['user'], post_id, text.replace("'", "''"))
+        sql = "INSERT INTO comments (comment_id, user_id, post_id, text) VALUES ((SELECT COALESCE(MAX(comment_id), 0) + 1 FROM comments), {}, {}, '{}')".format(session['user'], post_id, text.replace("'", "''"))
 
         with connection.cursor() as cursorObject:
             cursorObject.execute(sql)
@@ -341,6 +305,14 @@ def comments(org_id, post_id):
 @app.route('/organization/<int:org_id>/stats/', methods=['GET'])
 def organization_stats(org_id):
     global connection
+
+    if not session['user']:
+        return redirect('/')
+
+    usr = membership(session['user'], org_id)
+
+    if not usr["is_member"]:
+        return redirect('/')
 
     with connection.cursor() as cursorObject:
         sql = "SELECT e.event_name, g.team1_name, g.team1_score, g.team2_name, g.team2_score FROM games g, games_users u, events e WHERE e.org_id = {} and u.game_id = g.game_id and g.event_id = e.event_id and e.sport_name = 'basketball'".format(org_id)
@@ -367,13 +339,9 @@ def organization_events(org_id):
     if not session['user']:
         return redirect('/')
 
-    # confirm membership
-    with connection.cursor() as cursorObject:
-        sql = "SELECT * FROM users_organizations WHERE user_id={} AND org_id={}".format(session['user'], org_id)
-        cursorObject.execute(sql)
-        user_in_org = len(cursorObject.fetchall()) > 0
+    usr = membership(session['user'], org_id)
 
-    if not user_in_org:
+    if not usr["is_member"]:
         return redirect('/')
 
     
@@ -390,16 +358,14 @@ def organization_events(org_id):
             cursorObject.execute(sql)
             organization_name = cursorObject.fetchall()[0][0]
 
-            event_list = list(event_list)
-            for i, event in enumerate(event_list):
-                if event[4] is not None:
-                    image_stream = BytesIO(event[4].read())
-                    image_data = base64.b64encode(image_stream.getvalue()).decode('utf-8')
-                    event = list(event)
-                    event[4] = f"data:image/jpeg;base64,{image_data}"
-                    event_list[i] = tuple(event)
+            print(len(event_list))
 
-    return render_template('organization_events.html', user=session['user'], org_id=org_id, organization_name=organization_name, event_list=event_list)
+            event_list_photos = []
+            process_list_with_images(event_list, event_list_photos, 4)
+
+            print(len(event_list_photos))
+
+    return render_template('organization_events.html', user=session['user'], org_id=org_id, organization_name=organization_name, event_list=event_list_photos)
 
 
 @app.route('/organization/<int:org_id>/events/<int:event_id>/', methods=['GET'])
@@ -443,6 +409,47 @@ def add_header(response):
 @app.errorhandler(404)
 def not_found(e):
     return "We can't find that page. Or maybe the site is just broken because you aren't using a Mac."
+
+
+# This function checks a user's status as a member/admin/owner of an organization
+# It returns a dictionary of booleans {"is_member": ??, "is_admin": ??, "is_owner": ??}
+def membership(user_id, org_id):
+    with connection.cursor() as cursorObject:
+        sql = "SELECT * FROM users_organizations WHERE user_id={} AND org_id={}".format(user_id, org_id)
+        cursorObject.execute(sql)
+        user_in_org = len(cursorObject.fetchall()) > 0
+
+        sql = "SELECT * FROM organizations_admins WHERE user_id={} AND org_id={}".format(user_id, org_id)
+        cursorObject.execute(sql)
+        user_is_admin = len(cursorObject.fetchall()) > 0
+
+        # Not implemented yet
+        """sql = "SELECT owner_id FROM organizations WHERE org_id={}".format(org_id)
+        cursorObject.execute(sql)
+        owner_id = cursorObject.fetchall()[0]
+        user_is_owner = (owner_id == user_id)
+        """
+
+        usr = {
+            "is_member": user_in_org,
+            "is_admin": user_is_admin,
+            "is_owner": False # hard coded for now
+        }
+
+        return usr
+
+# this function takes in a list of databases rows containing an image and encodes the image bytes
+# it returns the modified list
+def process_list_with_images(original, corrected, photo_index):
+    cpy = list(original)
+    for i, item in enumerate(cpy):
+        if item[photo_index] is not None:
+            image_stream = BytesIO(item[photo_index].read())
+            image_data = base64.b64encode(image_stream.getvalue()).decode('utf-8')
+            item = list(item)
+            item[photo_index] = f"data:image/jpeg;base64,{image_data}"
+        
+        corrected.append(tuple(item))
 
 
 # Run the code
