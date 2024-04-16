@@ -4,7 +4,7 @@ import cx_Oracle
 from datetime import datetime
 import base64
 from io import BytesIO
-
+import bcrypt
 
 app = Flask(__name__)
 bootstrap = Bootstrap(app)
@@ -69,7 +69,7 @@ def login():
 
 # Registeration Page
 @app.route('/register/', methods=['GET', 'POST'])
-def register():
+def register(passwordFlag=False, emailFlag=False):
     global connection
 
     if request.method == 'GET':
@@ -79,17 +79,39 @@ def register():
         fullname = request.form.get('name')
         email = request.form.get('email')
         password = request.form.get('password')
+        confirmed_password = request.form.get('confirm-password')
         file = request.files['logo']
         
         file_data = file.read()
 
-        sql = "INSERT INTO users (user_id, fullname, email, password, profile_picture) VALUES ((SELECT COALESCE(MAX(user_id), 0) + 1 FROM users), '{}', '{}', '{}', :blob_data)".format(fullname, email, password)
+        # alert if passwords don't match
+        if password != confirmed_password:
+            return render_template('register.html', passwordFlag=True)
 
+        sql_check_email = "SELECT * FROM users WHERE email = '{email}'".format(email=email)
         with connection.cursor() as cursorObject:
-            cursorObject.execute(sql, [file_data])
+            cursorObject.execute(sql_check_email)
+            result = cursorObject.fetchall()
+
+        # alert if that email already exists
+        if result:
+            return render_template('register.html', emailFlag=True)
+
+        sql_create_user = "INSERT INTO users (user_id, fullname, email, password, profile_picture) VALUES ((SELECT COALESCE(MAX(user_id), 0) + 1 FROM users), '{}', '{}', '{}', :blob_data)".format(fullname, email, password)
+
+        # create the user
+        with connection.cursor() as cursorObject:
+            cursorObject.execute(sql_create_user, [file_data])
             connection.commit()
 
-        return 'yes'
+        # set session user
+        with connection.cursor() as cursorObject:
+            cursorObject.execute("SELECT user_id FROM users")
+            result = cursorObject.fetchall()
+            if result:
+                session['user'] = result[-1][0]
+
+        return redirect('/login/')
 
 # Page to create an organization
 @app.route('/create_organization/', methods=['GET', 'POST'])
