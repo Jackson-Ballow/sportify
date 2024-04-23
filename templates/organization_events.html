@@ -1,14 +1,19 @@
 {% extends 'template.html' %}
 
-{% block tab_title %}Events{% endblock %}
+{% block tab_title %}{{ prefix }} Events{% endblock %}
 
-{% block title %}Join Events at {{ organization_name }}{% endblock %}
+{% block title %}{{ prefix }} Events at {{ organization_name }}{% endblock %}
 
 {% block content %}
 <section class="account">
     <div class="container">
         <div class="home-body-2">
-            <h2><b>Click an Event to Join</b></h2>
+            {% if registered %}
+                <h2><b>View your Registered Events</b></h2>
+            {% else %}
+                <h2><b>Click an Event to Join</b></h2>
+            {% endif %}
+            
             <div class="modal fade" id="myModal">
                 <div class="modal-dialog">
                     <div class="modal-content">
@@ -43,7 +48,11 @@
                     <li style="list-style: none;">
                         <div class="row align-items-start">
                             <div class="col-md-4">
+                                {% if event[4] %}
                                 <img class="org-logo" src="{{ event[4] }}" />
+                                {% else %}
+                                <img class="org-log" src="{{url_for('static', filename='football.png')}}" style="width: 100%;">
+                                {% endif %}
                             </div>
                             <div class="col-md-8">
                                 <br />

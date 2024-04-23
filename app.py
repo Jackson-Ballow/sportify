@@ -223,8 +223,7 @@ def organization(org_id):
         organization_name = cursorObject.fetchall()[0][0]
 
 
-    admin = True
-    return render_template('organization_home.html', admin=admin, organization_name=organization_name, org_id=org_id, user=session['user'])
+    return render_template('organization_home.html', admin=usr['is_admin'], organization_name=organization_name, org_id=org_id, user=session['user'])
 
 
 # Posts for the organization
@@ -368,42 +367,142 @@ def organization_events(org_id):
 
     
     with connection.cursor() as cursorObject:
-            today = str(datetime.today()).split(' ')[0]
+        # TODO: show events that have not ended yet - I don't know why the date isn't working here
+        # today = str(datetime.today()).split(' ')[0]
+        # sql = "SELECT event_name, sport_name, event_bio, event_logo FROM events WHERE org_id={} AND end_date >= TO_DATE('{}', 'YYYY-MM-DD')".format(org_id, today)
 
-            # show events that have not ended yet - I don't know why the date isn't working here
-            sql = "SELECT event_id, event_name, sport_name, event_bio, event_logo FROM events WHERE org_id={}".format(org_id)
-            #sql = "SELECT event_name, sport_name, event_bio, event_logo FROM events WHERE org_id={} AND end_date >= TO_DATE('{}', 'YYYY-MM-DD')".format(org_id, today)
+        sql = "SELECT event_id, event_name, sport_name, event_bio, event_logo FROM events WHERE org_id={}".format(org_id)
+        cursorObject.execute(sql)
+        event_list = cursorObject.fetchall()
+
+        sql = "SELECT name FROM organizations WHERE org_id = {}".format(org_id)
+        cursorObject.execute(sql)
+        organization_name = cursorObject.fetchall()[0][0]
+
+        print(len(event_list))
+
+        event_list_photos = []
+        process_list_with_images(event_list, event_list_photos, 4)
+
+        print(len(event_list_photos))
+
+    return render_template('organization_events.html', user=session['user'], org_id=org_id, organization_name=organization_name, event_list=event_list_photos, registered=False, prefix='Join')
+
+### TO DO: ###
+@app.route('/organization/<int:org_id>/myregistrations/', methods=['GET'])
+def my_registrations(org_id):
+    if not session['user']:
+        return redirect('/')
+
+    usr = membership(session['user'], org_id)
+
+    if not usr["is_member"]:
+        return redirect('/')
+
+    with connection.cursor() as cursorObject:
+        # TODO: show events that have not ended yet - I don't know why the date isn't working here
+        # today = str(datetime.today()).split(' ')[0]
+        #sql = "SELECT event_name, sport_name, event_bio, event_logo FROM events WHERE org_id={} AND end_date >= TO_DATE('{}', 'YYYY-MM-DD')".format(org_id, today)
+
+        sql = "SELECT e.event_id, e.event_name, e.sport_name, e.event_bio, e.event_logo FROM events e, users_events u WHERE u.user_id = {} AND u.event_id = e.event_id AND e.org_id = {}".format(session['user'], org_id)
+        print(sql)
+
+        ### NOTE: Classic line, but this should work in theory. If you copy and paste the SQL query that i print right above this comment into sqlplus in your terminal,
+        ### it shows a result, but here it says there is nothing. This is happening in some other spots too and I can't figure it out
+
+        cursorObject.execute(sql)
+        event_list = cursorObject.fetchall()
+        print(len(event_list))
+
+        sql = "SELECT name FROM organizations WHERE org_id = {}".format(org_id)
+        cursorObject.execute(sql)
+        organization_name = cursorObject.fetchall()[0][0]
+
+        event_list_photos = []
+        process_list_with_images(event_list, event_list_photos, 4)
+
+    return render_template('organization_events.html', user=session['user'], org_id=org_id, organization_name=organization_name, event_list=event_list_photos, registered=True, prefix="My")
+
+@app.route('/organization/<int:org_id>/events/<int:event_id>/', methods=['GET', 'POST'])
+def event_details(org_id, event_id):
+    if not session['user']:
+        return redirect('/')
+
+    usr = membership(session['user'], org_id)
+
+    if not usr["is_member"]:
+        return redirect('/')
+
+    if request.method == "GET":
+        with connection.cursor() as cursorObject:
+            sql = "SELECT * FROM events WHERE event_id = {} AND org_id = {}".format(event_id, org_id)
             cursorObject.execute(sql)
-            event_list = cursorObject.fetchall()
+            event_details = cursorObject.fetchall()
 
-            sql = "SELECT name FROM organizations WHERE org_id = {}".format(org_id)
+            if not event_details:
+                return redirect("/organization/{org_id}/events")
+
+            sql = "SELECT * FROM users_events WHERE user_id={} AND event_id={}".format(session['user'], event_id)
             cursorObject.execute(sql)
-            organization_name = cursorObject.fetchall()[0][0]
+            registered = len(cursorObject.fetchall()) > 0   # boolean indicating whether or not they're registered
+            
+            sql = "SELECT * FROM users_events WHERE event_id={}".format(event_id)
+            cursorObject.execute(sql)
+            numRegistered = len(cursorObject.fetchall())
+            
 
-            print(len(event_list))
+        ## TODO: Jackson make the page described below
 
-            event_list_photos = []
-            process_list_with_images(event_list, event_list_photos, 4)
+        # return render_template('event_details.html', event=event_details[0], registered=registered, numRegistered=numRegistered)
+        return "Create a template here that basically shows the event in more detail (ex. you can read the entire bio, you can see how many seats are left out of the capacity, and maybe even see who else is registered? It should check if you're already registered and if so there should be a button to un-register)"
 
-            print(len(event_list_photos))
+    if request.method == "POST":
+        with connection.cursor() as cursorObject:
+            sql = "INSERT INTO users_events (user_id, event_id) VALUES ({}, {})".format(session['user'], event_id)
+            cursorObject.execute(sql)
+            cursorObject.commit()
 
-    return render_template('organization_events.html', user=session['user'], org_id=org_id, organization_name=organization_name, event_list=event_list_photos)
-
-
-@app.route('/organization/<int:org_id>/events/<int:event_id>/', methods=['GET'])
-def join_event(org_id, event_id):
-    # Code to add a user to an event here...
-    temp = "/organization/{org}/"
-
-    return redirect(temp.format(org=org_id))
+        return redirect('/organization/{org_id}/events/{event_id}/')
 
 
 
 # Create an event
 @app.route('/organization/<int:org_id>/create_events/', methods=['GET', 'POST'])
 def create_events(org_id):
-    return render_template('create_events.html')
+    if not session['user']:
+        return redirect('/')
 
+    usr = membership(session['user'], org_id)
+
+    if not usr["is_member"] or not usr["is_admin"]:
+        return redirect('/')
+
+    if request.method == "GET":
+        return render_template('create_events.html')
+
+    elif request.method == "POST":
+        name = request.form.get('event_name')
+        bio = request.form.get('event_bio')
+        sport = request.form.get('sport_name')
+        start = request.form.get('start_date')
+        end = request.form.get('end_date')
+        capacity = request.form.get('capacity')
+
+        with connection.cursor() as cursorObject:
+            sql = """INSERT INTO events (event_id, org_id, event_name, event_bio, sport_name, start_date, end_date, capacity) 
+            VALUES ((SELECT COALESCE(MAX(event_id), 0) + 1 FROM events), {}, '{}', '{}', '{}',  TO_DATE('{}', 'YYYY-MM-DD'),  TO_DATE('{}', 'YYYY-MM-DD'), {})""".format(
+                org_id, name.replace("'", "''"), bio.replace("'", "''"), sport, start, end, capacity)
+
+            cursorObject.execute(sql)
+            connection.commit()
+
+        return redirect('/organization/{}/events'.format(org_id))
+
+
+
+### NOTE: New idea for this. As an admin, when you are looking at a specific event, I feel like there should just be a button to add scores/stats
+### Then you would go to the page with the form you made and you enter stats, but you don't have to specify the event because it'll be in the URL
+### and we'll just have to load the teams for that event, not every team for every event. Then we won't need a tripple nested array lol
 
 # Create a stat
 @app.route('/organization/<int:org_id>/share_scores/', methods=['GET', 'POST'])
@@ -441,6 +540,9 @@ def membership(user_id, org_id):
         cursorObject.execute(sql)
         user_in_org = len(cursorObject.fetchall()) > 0
 
+        ### NOTE: Here is another spot where I've tested the query idependently and know it works but when it runs in the app it gets no results
+        ### The one below does not get anything from cursorObject.fetchall() even when there should be something
+        
         sql = "SELECT * FROM organizations_admins WHERE user_id={} AND org_id={}".format(user_id, org_id)
         cursorObject.execute(sql)
         user_is_admin = len(cursorObject.fetchall()) > 0
@@ -454,7 +556,7 @@ def membership(user_id, org_id):
 
         usr = {
             "is_member": user_in_org,
-            "is_admin": user_is_admin,
+            "is_admin": True, #user_is_admin,
             "is_owner": False # hard coded for now
         }
 
