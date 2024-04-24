@@ -4,6 +4,6 @@ create table posts(
     org_id number(38) NOT NULL,
     title varchar2(50) NOT NULL,
     text varchar2(500),
-    CONSTRAINT fk_user FOREIGN KEY (user_id) REFERENCES users(user_id),
-    CONSTRAINT fk_org FOREIGN KEY (org_id) REFERENCES organizations(org_id)
+    CONSTRAINT fk_p_user FOREIGN KEY (user_id) REFERENCES users(user_id),
+    CONSTRAINT fk_p_org FOREIGN KEY (org_id) REFERENCES organizations(org_id)
 );

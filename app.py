@@ -12,7 +12,7 @@ bootstrap = Bootstrap(app)
 app.config["SECRET_KEY"] = 'Verysecr3tkey'
 
 ### EXAMPLE CONNECTION TO DATABASE -- REMOVE LATER ###
-connection = cx_Oracle.connect('jballow/jballow@localhost:1521/XE')
+connection = cx_Oracle.connect('sportify/sportify@localhost:1521/XE')
 
 ##### Here are the routes that do not need to worry about admin status #####
 
@@ -97,6 +97,7 @@ def register(passwordFlag=False, emailFlag=False):
         if result:
             return render_template('register.html', emailFlag=True)
 
+        # TODO: Encrypt password
         sql_create_user = "INSERT INTO users (user_id, fullname, email, password, profile_picture) VALUES ((SELECT COALESCE(MAX(user_id), 0) + 1 FROM users), '{}', '{}', '{}', :blob_data)".format(fullname, email, password)
 
         # create the user
@@ -131,19 +132,20 @@ def create_organization():
 
         file_data = file.read()
 
-        sql = "INSERT INTO organizations (org_id, name, bio, profile_picture) VALUES ((SELECT COALESCE(MAX(org_id), 0) + 1 FROM organizations), :org_name, :bio, :blob_data)"
+        sql = "INSERT INTO organizations (org_id, name, bio, owner_id, profile_picture) VALUES ((SELECT COALESCE(MAX(org_id), 0) + 1 FROM organizations), :org_name, :bio, :owner_id, :blob_data)"
 
 
         with connection.cursor() as cursorObject:
-            cursorObject.execute(sql, {'org_name': org_name, 'bio': bio, 'blob_data': file_data})
+            cursorObject.execute(sql, {'org_name': org_name, 'bio': bio, 'blob_data': file_data, 'owner_id': session['user']})
 
             # Get the new org_id
             cursorObject.execute("SELECT MAX(org_id) FROM organizations")
             org_id = cursorObject.fetchone()[0]
 
             # Insert into users_organizations
-            user_org_sql = "INSERT INTO users_organizations (user_id, org_id) VALUES (:user_id, :org_id)"
-            cursorObject.execute(user_org_sql, {'user_id': session['user'], 'org_id': org_id})
+            today = str(datetime.today()).split(' ')[0]
+            user_org_sql = "INSERT INTO users_organizations (user_id, org_id, date_joined) VALUES ({}, {}, TO_DATE('{}', 'YYYY-MM-DD'))".format(session['user'], org_id, today)
+            cursorObject.execute(user_org_sql)
 
 
             # Insert into organizations_admins
@@ -512,6 +514,62 @@ def share_scores(org_id):
             [1, 'Event 2', [[2, 'E2 T1'], [3, 'E2 T2']] ]
             ]
     return render_template('share_scores.html', events=test_list)
+
+
+@app.route('/organization/<int:org_id>/manage_users/')
+def manage_users(org_id):
+    if not session['user']:
+        return redirect('/')
+
+    usr = membership(session['user'], org_id)
+
+    if not usr["is_member"] or not usr["is_admin"]:
+        return redirect('/')
+
+    with connection.cursor() as cursorObject:
+        sql = "SELECT u.user_id, u.email, u.fullname, TO_CHAR(uo.date_joined, 'MM-DD-YYYY') FROM users u, users_organizations uo WHERE uo.org_id = {} AND uo.user_id = u.user_id".format(org_id)
+        cursorObject.execute(sql)
+        users = cursorObject.fetchall()
+
+        # admins will show up in both lists; we should just display them once but somehow indicate they are an admin
+        sql_admins = "SELECT user_id FROM organizations_admins WHERE org_id = {}".format(org_id)
+        cursorObject.execute(sql_admins)
+        admins = cursorObject.fetchall()
+
+        print(users)
+        print(admins)
+
+    return "Make a page that has a giant table that lists all the users. You should be able to remove a user and there should also be a button or pop up or another page where you can invite users by email. In theory you should probably be able to search/filter the table for a specific name(s) without having to send something to the backend."
+    
+
+@app.route('/organization/<int:org_id>/remove/<int:user_id>')
+def remove_user(org_id, user_id):
+    if not session['user']:
+        return redirect('/')
+
+    usr = membership(session['user'], org_id)
+
+    if not usr["is_member"] or not usr["is_admin"]:
+        return redirect('/')
+
+    with connection.cursor() as cursorObject:
+        # check if user we're deleting is an admin (only the owner can do this)
+        sql_admin = "SELECT user_id FROM organizations_admins WHERE org_id = {} AND user_id = {}".format(org_id, user_id)
+        cursorObject.execute(sql_admin)
+        is_admin = len(cursorObject.fetchall()) > 0
+
+        if is_admin and usr["is_owner"]:
+            sql_del = "DELETE FROM organizations_admins WHERE user_id = {} AND org_id = {}".format(user_id, org_id)
+            cursorObject.execute(sql_del)
+            connection.commit()
+        elif is_admin:
+            return "Error: only the organization owner can remove admins"
+
+        sql_del = "DELETE FROM users_organizations WHERE user_id = {} AND org_id = {}".format(user_id, org_id)
+        cursorObject.execute(sql_del)
+        connection.commit()
+
+    return redirect("/organization/{}/manage_users/".format(org_id))
 
 
 @app.route('/hire/', methods=['GET'])

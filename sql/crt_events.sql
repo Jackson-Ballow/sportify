@@ -8,5 +8,5 @@ create table events(
     event_bio varchar2(500),
     event_logo BLOB,
     capacity number(38) NOT NULL,
-    CONSTRAINT fk_org FOREIGN KEY (org_id) REFERENCES organizations(org_id)
+    CONSTRAINT fk_e_org FOREIGN KEY (org_id) REFERENCES organizations(org_id)
 );
