@@ -5,5 +5,5 @@ create table games(
     team1_score number(38),
     team2_name varchar2(100),
     team2_score number(38),
-    CONSTRAINT fk_event FOREIGN KEY (event_id) REFERENCES events(event_id)
+    CONSTRAINT fk_g_event FOREIGN KEY (event_id) REFERENCES events(event_id)
 );

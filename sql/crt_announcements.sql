@@ -4,5 +4,5 @@ create table announcements(
     date_posted date NOT NULL,
     subject varchar2(100) NOT NULL,
     text varchar2(500),
-    CONSTRAINT fk_org FOREIGN KEY (org_id) REFERENCES organizations(org_id)
+    CONSTRAINT fk_a_org FOREIGN KEY (org_id) REFERENCES organizations(org_id)
 );
