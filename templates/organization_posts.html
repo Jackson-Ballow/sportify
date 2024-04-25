@@ -50,15 +50,15 @@
                                 <br />
 				<div class="d-flex justify-content-between align-items-center">
             				<h2 class="mb-0">{{ post[1] }}</h2>
+        			</div>
+				<p><i>{{ post[3] }}</i><br />{{ post[2] }}</p><br />
+                            </div>
+                        </div>
             				{% if admin %}
             				<a href="/organization/{{ org_id }}/posts/{{ post[0] }}/delete/" class="btn btn-danger">
                 				<i class="bi bi-trash-fill"></i>Delete Post
             				</a>
             				{% endif %}
-        			</div>
-				<p><i>{{ post[3] }}</i><br />{{ post[2] }}</p><br />
-                            </div>
-                        </div>
                     </li>
                 </a>
                 {% endfor %}

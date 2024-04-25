@@ -1,6 +1,7 @@
 drop table users_events;
-drop table games_users;
+drop table teams_users;
 drop table games;
+drop table teams;
 drop table events;
 drop table announcements;
 drop table comments;
@@ -18,6 +19,7 @@ drop table users;
 @crt_comments
 @crt_announcements
 @crt_events
+@crt_teams
 @crt_games
-@crt_games_users
+@crt_teams_users
 @crt_users_events

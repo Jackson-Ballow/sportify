@@ -57,6 +57,11 @@
                                 <br />
                                 <p><i>{{ comment[2] }}</i><br />{{ comment[1] }}</p>
                             </div>
+            		    {% if admin %}
+			    <a href="{{ comment[0] }}/delete" class="btn btn-danger" style="display: block; margin: auto; width: 10em;">
+                		<i class="bi bi-trash-fill"></i>Delete Comment
+            		    </a>
+            		    {% endif %}
                         </div>
                     </li>
                 {% endfor %}
