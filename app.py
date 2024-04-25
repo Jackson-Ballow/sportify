@@ -256,7 +256,8 @@ def organization_posts(org_id):
             post_list_photos = []
             process_list_with_images(post_list, post_list_photos, 4)
 
-        return render_template('organization_posts.html', organization_name=organization_name, post_list=post_list_photos, org_id=org_id, user=session['user'])
+        admin = True
+        return render_template('organization_posts.html', organization_name=organization_name, post_list=post_list_photos, admin=admin, org_id=org_id, user=session['user'])
 
     elif request.method == 'POST':
         title = request.form.get('post_title')
@@ -308,8 +309,9 @@ def comments(org_id, post_id):
             post_photo = []
             process_list_with_images(post, post_photo, 4)
 
+            admin = True
 
-        return render_template('comments.html', organization_name=organization_name, org_id=org_id, post=post_photo[0], comment_list=comment_list_photos)
+        return render_template('comments.html', admin=admin, organization_name=organization_name, org_id=org_id, post=post_photo[0], comment_list=comment_list_photos)
 
 
     elif request.method == 'POST':
@@ -381,12 +383,9 @@ def organization_events(org_id):
         cursorObject.execute(sql)
         organization_name = cursorObject.fetchall()[0][0]
 
-        print(len(event_list))
 
         event_list_photos = []
         process_list_with_images(event_list, event_list_photos, 4)
-
-        print(len(event_list_photos))
 
     return render_template('organization_events.html', user=session['user'], org_id=org_id, organization_name=organization_name, event_list=event_list_photos, registered=False, prefix='Join')
 
@@ -514,10 +513,21 @@ def create_events(org_id):
 # Create a stat
 @app.route('/organization/<int:org_id>/share_scores/', methods=['GET', 'POST'])
 def share_scores(org_id):
+    if not session['user']:
+        return redirect('/')
+
+    usr = membership(session['user'], org_id)
+
+    if not usr["is_member"] or not usr["is_admin"]:
+        return redirect('/')
+    
+
     test_list = [
             [0, 'Event 1', [[0, 'E1 T1'], [1,'E1 T2']] ],
             [1, 'Event 2', [[2, 'E2 T1'], [3, 'E2 T2']] ]
             ]
+
+
     return render_template('share_scores.html', events=test_list)
 
 
