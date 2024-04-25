@@ -390,7 +390,7 @@ def organization_events(org_id):
 
     return render_template('organization_events.html', user=session['user'], org_id=org_id, organization_name=organization_name, event_list=event_list_photos, registered=False, prefix='Join')
 
-### TO DO: ###
+
 @app.route('/organization/<int:org_id>/myregistrations/', methods=['GET'])
 def my_registrations(org_id):
     if not session['user']:
@@ -408,10 +408,7 @@ def my_registrations(org_id):
 
         sql = "SELECT e.event_id, e.event_name, e.sport_name, e.event_bio, e.event_logo FROM events e, users_events u WHERE u.user_id = {} AND u.event_id = e.event_id AND e.org_id = {}".format(session['user'], org_id)
         print(sql)
-
-        ### NOTE: Classic line, but this should work in theory. If you copy and paste the SQL query that i print right above this comment into sqlplus in your terminal,
-        ### it shows a result, but here it says there is nothing. This is happening in some other spots too and I can't figure it out
-
+        
         cursorObject.execute(sql)
         event_list = cursorObject.fetchall()
         print(len(event_list))
@@ -454,7 +451,7 @@ def event_details(org_id, event_id):
             
         # [[id, email, fullname]]
         event_list = [[2, 'jballow@nd.edu', 'Jackson Ballow'], [1, 'jfrabut2@nd.edu', 'Jacob Frabutt']]
-        numRegistered = 2
+        #numRegistered = 2
 
         admin = False
 
@@ -521,7 +518,7 @@ def share_scores(org_id):
     return render_template('share_scores.html', events=test_list)
 
 
-@app.route('/organization/<int:org_id>/manage_users/')
+@app.route('/organization/<int:org_id>/manage_users/', methods=['GET', 'POST'])
 def manage_users(org_id):
     if not session['user']:
         return redirect('/')
@@ -531,38 +528,66 @@ def manage_users(org_id):
     if not usr["is_member"] or not usr["is_admin"]:
         return redirect('/')
 
-    with connection.cursor() as cursorObject:
-        # sql = "SELECT u.user_id, u.email, u.fullname, TO_CHAR(uo.date_joined, 'MM-DD-YYYY') FROM users u, users_organizations uo WHERE uo.org_id = {} AND uo.user_id = u.user_id".format(org_id)
-        sql = "SELECT u.user_id, u.email, u.fullname FROM users u, users_organizations uo WHERE uo.org_id = {} AND uo.user_id = u.user_id".format(org_id)
-        cursorObject.execute(sql)
-        users = cursorObject.fetchall()
+    if request.method == "GET":
+        with connection.cursor() as cursorObject:
+            # sql = "SELECT u.user_id, u.email, u.fullname, TO_CHAR(uo.date_joined, 'MM-DD-YYYY') FROM users u, users_organizations uo WHERE uo.org_id = {} AND uo.user_id = u.user_id".format(org_id)
+            sql = "SELECT u.user_id, u.email, u.fullname FROM users u, users_organizations uo WHERE uo.org_id = {} AND uo.user_id = u.user_id".format(org_id)
+            cursorObject.execute(sql)
+            users = cursorObject.fetchall()
 
-        # admins will show up in both lists; we should just display them once but somehow indicate they are an admin
-        sql_admins = "SELECT o.user_id, u.email, u.fullname FROM organizations_admins o, users u WHERE org_id = {} AND o.user_id = u.user_id".format(org_id)
-        cursorObject.execute(sql_admins)
-        admins = cursorObject.fetchall()
+            # admins will show up in both lists; we should just display them once but somehow indicate they are an admin
+            sql_admins = "SELECT o.user_id, u.email, u.fullname FROM organizations_admins o, users u WHERE org_id = {} AND o.user_id = u.user_id".format(org_id)
+            cursorObject.execute(sql_admins)
+            admins = cursorObject.fetchall()
 
-        member_list = []
+            member_list = []
+            
+            for admin in admins:
+                admin = list(admin)
+                admin.append('Admin')
+                member_list.append(admin)
+
+            for user in users:
+                if user and not any(user[0] == admin[0] for admin in admins):
+                    user = list(user)
+                    user.append('Member')
+                    print(user)
+                    member_list.append(user)
+
+
+        return render_template('manage_users.html', owner=True, member_list=member_list, user=session['user'])
+        # return "Make a page that has a giant table that lists all the users. You should be able to remove a user and there should also be a button or pop up or another page where you can invite users by email. In theory you should probably be able to search/filter the table for a specific name(s) without having to send something to the backend."
+
+    elif request.method == "POST":
+        status = request.form.get('member_or_admin')
+        email = request.form.get('email')
+
+        with connection.cursor() as cursorObject:
+
+            # check user exists
+            sql = "SELECT user_id FROM users WHERE email = '{}'".format(email)
+            cursorObject.execute(sql)
+            user = cursorObject.fetchall()
+
+            if not user:
+                return "Error: you can't add a user until they create an account"
+
+            user_id = user[0][0]
+            today = str(datetime.today()).split(' ')[0]
+            sql_add_user = "INSERT INTO users_organizations (user_id, org_id, date_joined) VALUES ({}, {}, TO_DATE('{}', 'YYYY-MM-DD'))".format(user_id, org_id, today)
+            cursorObject.execute(sql_add_user)
+
+            if status == "admin":
+                sql_add_admin = "INSERT INTO organizations_admins (user_id, org_id) VALUES ({}, {})".format(user_id, org_id)
+                cursorObject.execute(sql_add_admin)
+
+            connection.commit()
+
+        return redirect('/organization/{}/manage_users/'.format(org_id))
         
-        for admin in admins:
-            admin = list(admin)
-            admin.append('Admin')
-            member_list.append(admin)
-
-        for user in users:
-            if user and not any(user[0] == admin[0] for admin in admins):
-                user = list(users)
-                user.append('Member')
-                user = list(users)
-                user.append('Member')
-                member_list.append(user)
 
 
-    return render_template('manage_users.html', owner=True, member_list=member_list)
-    # return "Make a page that has a giant table that lists all the users. You should be able to remove a user and there should also be a button or pop up or another page where you can invite users by email. In theory you should probably be able to search/filter the table for a specific name(s) without having to send something to the backend."
-    
-
-@app.route('/organization/<int:org_id>/remove/<int:user_id>')
+@app.route('/organization/<int:org_id>/manage_users/remove/<int:user_id>')
 def remove_user(org_id, user_id):
     if not session['user']:
         return redirect('/')
@@ -571,6 +596,9 @@ def remove_user(org_id, user_id):
 
     if not usr["is_member"] or not usr["is_admin"]:
         return redirect('/')
+
+    if user_id == session['user']:
+        return "Error: Should you be able to remove yourself?"
 
     with connection.cursor() as cursorObject:
         # check if user we're deleting is an admin (only the owner can do this)
@@ -617,25 +645,21 @@ def membership(user_id, org_id):
         sql = "SELECT * FROM users_organizations WHERE user_id={} AND org_id={}".format(user_id, org_id)
         cursorObject.execute(sql)
         user_in_org = len(cursorObject.fetchall()) > 0
-
-        ### NOTE: Here is another spot where I've tested the query idependently and know it works but when it runs in the app it gets no results
-        ### The one below does not get anything from cursorObject.fetchall() even when there should be something
-        
+   
         sql = "SELECT * FROM organizations_admins WHERE user_id={} AND org_id={}".format(user_id, org_id)
         cursorObject.execute(sql)
         user_is_admin = len(cursorObject.fetchall()) > 0
 
         # Not implemented yet
-        """sql = "SELECT owner_id FROM organizations WHERE org_id={}".format(org_id)
+        sql = "SELECT owner_id FROM organizations WHERE org_id={}".format(org_id)
         cursorObject.execute(sql)
-        owner_id = cursorObject.fetchall()[0]
+        owner_id = cursorObject.fetchall()[0][0]
         user_is_owner = (owner_id == user_id)
-        """
-
+        
         usr = {
             "is_member": user_in_org,
-            "is_admin": True, #user_is_admin,
-            "is_owner": False # hard coded for now
+            "is_admin": user_is_admin,
+            "is_owner": user_is_owner
         }
 
         return usr
@@ -657,4 +681,4 @@ def process_list_with_images(original, corrected, photo_index):
 # Run the code
 if __name__ == '__main__':
     # run your app
-    app.run(host='0.0.0.0', port=8000)
+    app.run(host='0.0.0.0', port=8000, debug=True)
