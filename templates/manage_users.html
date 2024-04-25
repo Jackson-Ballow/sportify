@@ -1,0 +1,61 @@
+{% extends 'template.html' %}
+{% block tab_title %}Manage Users{% endblock %}
+{% block title %}Manage Your Organization's Users{% endblock %}
+
+{% block content %}
+<section class="account">
+    <div class="container">
+        <div class="home-body-2">
+            <h1 style="text-align: center;"><b>Select Row To Remove Member</b></h1>
+
+            <table id="user_table">
+                <thead class="thead-light">
+                    <tr>
+                        <th>Full Name</th>
+                        <th>Email</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for member in member_list %}
+		    <tr onclick="confirmDeletion('{{ member[0] }}', '{{ member[2] }}')">
+                        <td>{{ member[2] }}</td>
+                        <td>{{ member[1] }}</td>
+                        <td>{{ member[3] }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+	    <br /><br />
+	    <h2 style="text-align: center;"><b>Add a new member or admin</b></h2>
+	    <form class="login-form" method="post">
+		<label for="sportSelect">Add as member or admin:</label>
+	       	<select id="member_or_admin" name="member_or_admin" class="table-dropdown">
+                	<option value="member">Member</option>
+                	<option value="admin">Admin</option>
+            	</select> 
+            	<br />	
+		<div class="row mt-3">
+                	<div class="col-lg-12 col-md-12 col-sm-12">
+                        	<input type="text" name="email" id="email" class="form-control"
+                                style="text-transform: none; color: black; background-color: white; border-color: black;" placeholder="Email of user to add" required>
+                        </div>
+               </div>
+	       <button class="btn form-btn" method="post">Add User</button>
+	    </form>
+        </div>
+    </div>
+</section>
+
+<script>
+    function confirmDeletion(memberId, memberName, org_id) {
+        const currentPath = window.location.pathname;
+        const newPath = `remove/${memberId}/REMOVE_THIS_LINE_FROM_THE_JS_AT_THE_BOTTOM_OF-manage_users.html`;
+        if (confirm("Are you sure you want to remove " + memberName + "?")) {
+            window.location.href = newPath;
+        }
+    }
+</script>
+
+{% endblock %}
+
