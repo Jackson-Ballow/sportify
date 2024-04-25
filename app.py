@@ -452,20 +452,25 @@ def event_details(org_id, event_id):
             cursorObject.execute(sql)
             numRegistered = len(cursorObject.fetchall())
             
+        # [[id, email, fullname]]
+        event_list = [[2, 'jballow@nd.edu', 'Jackson Ballow'], [1, 'jfrabut2@nd.edu', 'Jacob Frabutt']]
+        numRegistered = 2
 
-        ## TODO: Jackson make the page described below
+        admin = False
 
-        # return render_template('event_details.html', event=event_details[0], registered=registered, numRegistered=numRegistered)
-        return "Create a template here that basically shows the event in more detail (ex. you can read the entire bio, you can see how many seats are left out of the capacity, and maybe even see who else is registered? It should check if you're already registered and if so there should be a button to un-register)"
+        return render_template('event_details.html', event=event_details[0], registered=registered, numRegistered=numRegistered, event_list=event_list, admin=admin)
+        # return "Create a template here that basically shows the event in more detail (ex. you can read the entire bio, you can see how many seats are left out of the capacity, and maybe even see who else is registered? It should check if you're already registered and if so there should be a button to un-register)"
 
+    
     if request.method == "POST":
-        with connection.cursor() as cursorObject:
+        '''    with connection.cursor() as cursorObject:
             sql = "INSERT INTO users_events (user_id, event_id) VALUES ({}, {})".format(session['user'], event_id)
             cursorObject.execute(sql)
             cursorObject.commit()
 
         return redirect('/organization/{org_id}/events/{event_id}/')
-
+        '''
+        return 'Change this post request to check for admin status and create a team. Joining the event will take place via the /register and /unregiser route'
 
 
 # Create an event
@@ -527,19 +532,34 @@ def manage_users(org_id):
         return redirect('/')
 
     with connection.cursor() as cursorObject:
-        sql = "SELECT u.user_id, u.email, u.fullname, TO_CHAR(uo.date_joined, 'MM-DD-YYYY') FROM users u, users_organizations uo WHERE uo.org_id = {} AND uo.user_id = u.user_id".format(org_id)
+        # sql = "SELECT u.user_id, u.email, u.fullname, TO_CHAR(uo.date_joined, 'MM-DD-YYYY') FROM users u, users_organizations uo WHERE uo.org_id = {} AND uo.user_id = u.user_id".format(org_id)
+        sql = "SELECT u.user_id, u.email, u.fullname FROM users u, users_organizations uo WHERE uo.org_id = {} AND uo.user_id = u.user_id".format(org_id)
         cursorObject.execute(sql)
         users = cursorObject.fetchall()
 
         # admins will show up in both lists; we should just display them once but somehow indicate they are an admin
-        sql_admins = "SELECT user_id FROM organizations_admins WHERE org_id = {}".format(org_id)
+        sql_admins = "SELECT o.user_id, u.email, u.fullname FROM organizations_admins o, users u WHERE org_id = {} AND o.user_id = u.user_id".format(org_id)
         cursorObject.execute(sql_admins)
         admins = cursorObject.fetchall()
 
-        print(users)
-        print(admins)
+        member_list = []
+        
+        for admin in admins:
+            admin = list(admin)
+            admin.append('Admin')
+            member_list.append(admin)
 
-    return "Make a page that has a giant table that lists all the users. You should be able to remove a user and there should also be a button or pop up or another page where you can invite users by email. In theory you should probably be able to search/filter the table for a specific name(s) without having to send something to the backend."
+        for user in users:
+            if user and not any(user[0] == admin[0] for admin in admins):
+                user = list(users)
+                user.append('Member')
+                user = list(users)
+                user.append('Member')
+                member_list.append(user)
+
+
+    return render_template('manage_users.html', owner=True, member_list=member_list)
+    # return "Make a page that has a giant table that lists all the users. You should be able to remove a user and there should also be a button or pop up or another page where you can invite users by email. In theory you should probably be able to search/filter the table for a specific name(s) without having to send something to the backend."
     
 
 @app.route('/organization/<int:org_id>/remove/<int:user_id>')

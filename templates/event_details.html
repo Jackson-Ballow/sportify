@@ -1,0 +1,73 @@
+{% extends 'template.html' %}
+
+{% block tab_title %}Event Details{% endblock %}
+
+{% block title %}Event Details For {{ event[5] }}{% endblock %}
+
+{% block content %}
+<section class="account">
+    <div class="container">
+        <div class="home-body-2">
+            <div class="row justify-content-center">
+            	<a class="btn form-btn" href=".." style="width: 45%; margin-right: 1em; background-color: rgb(170, 169, 169); color: black;">Go Back</a>
+		{% if registered %}
+			<a class="btn form-btn" href="unregister" style="width: 45%;">Unregister</a>
+		{% else %}
+			<a class="btn form-btn" href="register" style="width: 45%;">Register</a>
+		{% endif %}
+	    </div>
+	    <br />
+	    <div>
+	    	<h1>{{ event[5] }}</h1>
+		<p>{{ event[3] }} to {{ event[4] }}</p>
+		<p><b>Description:</b> {{ event[6] }}</p>
+	    </div>
+	    <br /> <br />
+	    <h4><b>Event List - {{ numRegistered }} Total Registrations</b></h4>
+	    <table id="user_table">
+                <thead class="thead-light">
+                    <tr>
+                        <th>Full Name</th>
+                        <th>Email</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for member in event_list %}
+                    <tr>
+                        <td>{{ member[2] }}</td>
+                        <td>{{ member[1] }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+	    {% if admin %}
+	    	<br /><br />
+		<form class="login-form" method="post">
+			<h4><b>Create Teams</b></h4>
+                    <div class="row mt-3">
+                        <div class="col-lg-12 col-md-12 col-sm-12">
+                            <input type="text" name="team_name" id="team_name" class="form-control"
+                                style="text-transform: none; background-color: white; color: black; border-color: black;" placeholder="Team Name" required>
+                        </div>
+                    </div>
+
+		    <div class="row mt-3">
+        		<div class="col-lg-12 col-md-12 col-sm-12">
+            			<label for="roleSelect">Team Members (Control Click To Select Multiple Users):</label>
+            			<select id="roleSelect" class="form-control" style="text-transform: none; background-color: white; color: black; border-color: black;" multiple>
+					{% for member in event_list %}
+						<option value="{{ member[0] }}">{{ member[2] }}</option>
+					{% endfor %}
+            			</select>
+        		</div>
+    		    </div>
+                    <button class="btn form-btn" method="post">Create Team</button>
+                </form>		
+	    {% endif %}
+
+        </div>
+    </div>
+</section>
+
+{% endblock %}
