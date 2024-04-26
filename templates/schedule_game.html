@@ -1,0 +1,54 @@
+{% extends 'template.html' %}
+
+{% block tab_title %}Schedule Game{% endblock %}
+
+{% block title %}Schedule A Game{% endblock %}
+
+{% block content %}
+    <section class="account">
+        <div class="container">
+            <div class="login">
+                <form class="login-form" method="post">
+                    <h3>Select Teams and Time</h3>
+                    <div class="row mt-3">
+                        <div class="col-lg-12 col-md-12 col-sm-12">
+			    <label for="team1">Team 1:</label>
+                            <select class="form-control" id="team1" name="team1">
+				{% for team in team_list %}
+				    <option value="{{ team[0] }}">{{ team[1] }}</option>
+				{% endfor %}
+			    </select>
+			</div>
+                    </div>
+		    
+                    <div class="row mt-3">
+                        <div class="col-lg-12 col-md-12 col-sm-12">
+			    <label for="team2">Team 2:</label>
+                            <select class="form-control" id="team2" name="team2">
+				{% for team in team_list %}
+				    <option value="{{ team[0] }}">{{ team[1] }}</option>
+				{% endfor %}
+			    </select>
+			</div>
+                    </div>
+
+                    <div class="row mt-3">
+                        <div class="col-lg-12 col-md-12 col-sm-12">
+			    <label for="game_time">Date and Time:</label>
+		    	    <input type="datetime-local" id="game_time" name="game_time" style="background-color: white; color: grey;" class="form-control" required>
+			</div>
+                    </div>
+
+                    <div class="row mt-3">
+                        <div class="col-lg-12 col-md-12 col-sm-12">
+		    	    <input type="text" id="location" name="location" placeholder="Location of Game" style="background-color: white; color: grey;" class="form-control" required>
+			</div>
+                    </div>
+                    
+		    <button class="btn form-btn" method="post">Schedule Game</button>
+                </form>
+            </div>
+        </div>
+    </section>
+{% endblock %}
+
