@@ -64,7 +64,7 @@ def login():
             session['user'] = myResult[0][0]
             return redirect('/')
         
-        return 'no'
+        return render_template('login.html', warning='Email or password did not match')
 
 
 # Registeration Page
@@ -185,11 +185,12 @@ def profile():
         return redirect('/')
 
     with connection.cursor() as cursorObject:
-        sql = "SELECT e.event_name, g.team1_name, g.team1_score, g.team2_name, g.team2_score FROM games g, games_users u, events e WHERE u.user_id = {} and u.game_id = g.game_id and g.event_id = e.event_id and e.sport_name = 'basketball'".format(session['user'])
+        sql = "SELECT * FROM games g, teams_users u, events e, teams t WHERE u.user_id = {} and e.sport_name = 'basketball' and u.team_id = t.team_id and t.event_id = e.event_id and (g.team1_id = t.team_id or g.team2_id = t.team_id)".format(session['user'])
     
         cursorObject.execute(sql)
         basketball_list = cursorObject.fetchall()
 
+        return '1'
         sql = "SELECT e.event_name, g.team1_name, g.team1_score, g.team2_name, g.team2_score FROM games g, games_users u, events e WHERE u.user_id = {} and u.game_id = g.game_id and g.event_id = e.event_id and e.sport_name = 'football'".format(session['user'])
     
         cursorObject.execute(sql)
@@ -390,14 +391,9 @@ def organization_events(org_id):
     return render_template('organization_events.html', user=session['user'], org_id=org_id, organization_name=organization_name, event_list=event_list_photos, registered=False, prefix='Join')
 
 
-@app.route('/organization/<int:org_id>/myregistrations/', methods=['GET'])
+@app.route('/myregistrations/', methods=['GET'])
 def my_registrations(org_id):
     if not session['user']:
-        return redirect('/')
-
-    usr = membership(session['user'], org_id)
-
-    if not usr["is_member"]:
         return redirect('/')
 
     with connection.cursor() as cursorObject:
@@ -452,7 +448,7 @@ def event_details(org_id, event_id):
         event_list = [[2, 'jballow@nd.edu', 'Jackson Ballow'], [1, 'jfrabut2@nd.edu', 'Jacob Frabutt']]
         #numRegistered = 2
 
-        admin = False
+        admin = True
 
         return render_template('event_details.html', event=event_details[0], registered=registered, numRegistered=numRegistered, event_list=event_list, admin=admin)
         # return "Create a template here that basically shows the event in more detail (ex. you can read the entire bio, you can see how many seats are left out of the capacity, and maybe even see who else is registered? It should check if you're already registered and if so there should be a button to un-register)"
@@ -468,6 +464,13 @@ def event_details(org_id, event_id):
         '''
         return 'Change this post request to check for admin status and create a team. Joining the event will take place via the /register and /unregiser route'
 
+
+# Create a game
+# TODO: Backend functionality for this
+@app.route('/organization/<int:org_id>/events/<int:event_id>/schedule_game', methods=['GET', 'POST'])
+def schedule_game(org_id, event_id):
+    team_list = [[1, 'Massive Men'], [2, 'Losing Team']]
+    return render_template('schedule_game.html', team_list=team_list)
 
 # Create an event
 @app.route('/organization/<int:org_id>/create_events/', methods=['GET', 'POST'])
