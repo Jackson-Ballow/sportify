@@ -54,6 +54,8 @@ def login():
         email = request.form.get('email')
         password = request.form.get('password')
 
+        
+
         with connection.cursor() as cursorObject:
             sql = "SELECT * FROM users WHERE email = '{email}' and password = '{password}'"
             sql = sql.format(email=email, password=password)
@@ -507,10 +509,9 @@ def organization_events(org_id):
     
     with connection.cursor() as cursorObject:
         # TODO: show events that have not ended yet - I don't know why the date isn't working here
-        # today = str(datetime.today()).split(' ')[0]
-        # sql = "SELECT event_name, sport_name, event_bio, event_logo FROM events WHERE org_id={} AND end_date >= TO_DATE('{}', 'YYYY-MM-DD')".format(org_id, today)
+        today = str(datetime.today()).split(' ')[0]
+        sql = "SELECT event_id, event_name, sport_name, event_bio FROM events WHERE org_id={} AND end_date >= TO_DATE('{}', 'YYYY-MM-DD')".format(org_id, today)
 
-        sql = "SELECT event_id, event_name, sport_name, event_bio, event_logo FROM events WHERE org_id={}".format(org_id)
         cursorObject.execute(sql)
         event_list = cursorObject.fetchall()
 
@@ -518,15 +519,11 @@ def organization_events(org_id):
         cursorObject.execute(sql)
         organization_name = cursorObject.fetchall()[0][0]
 
-
-        event_list_photos = []
-        process_list_with_images(event_list, event_list_photos, 4)
-
-    return render_template('organization_events.html', user=session['user'], org_id=org_id, organization_name=organization_name, event_list=event_list_photos, registered=False, prefix='Join')
+    return render_template('organization_events.html', user=session['user'], org_id=org_id, organization_name=organization_name, event_list=event_list, registered=False)
 
 
 @app.route('/myregistrations/', methods=['GET'])
-def my_registrations(org_id):
+def my_registrations():
     if not session['user']:
         return redirect('/')
 
@@ -535,21 +532,17 @@ def my_registrations(org_id):
         # today = str(datetime.today()).split(' ')[0]
         #sql = "SELECT event_name, sport_name, event_bio, event_logo FROM events WHERE org_id={} AND end_date >= TO_DATE('{}', 'YYYY-MM-DD')".format(org_id, today)
 
-        sql = "SELECT e.event_id, e.event_name, e.sport_name, e.event_bio, e.event_logo FROM events e, users_events u WHERE u.user_id = {} AND u.event_id = e.event_id AND e.org_id = {}".format(session['user'], org_id)
+        sql = "SELECT e.event_id, e.event_name, e.sport_name, e.event_bio, e.org_id, o.name FROM events e, users_events u, organizations o WHERE u.user_id = {} AND u.event_id = e.event_id AND e.org_id = o.org_id".format(session['user'])
         print(sql)
         
         cursorObject.execute(sql)
         event_list = cursorObject.fetchall()
-        print(len(event_list))
+        
+        # sql = "SELECT name FROM organizations WHERE org_id = {}".format(org_id)
+        # cursorObject.execute(sql)
+        # organization_name = cursorObject.fetchall()[0][0]
 
-        sql = "SELECT name FROM organizations WHERE org_id = {}".format(org_id)
-        cursorObject.execute(sql)
-        organization_name = cursorObject.fetchall()[0][0]
-
-        event_list_photos = []
-        process_list_with_images(event_list, event_list_photos, 4)
-
-    return render_template('organization_events.html', user=session['user'], org_id=org_id, organization_name=organization_name, event_list=event_list_photos, registered=True, prefix="My")
+    return render_template('my_registrations.html', user=session['user'], event_list=event_list, registered=True)
 
 @app.route('/organization/<int:org_id>/events/<int:event_id>/', methods=['GET', 'POST'])
 def event_details(org_id, event_id):
