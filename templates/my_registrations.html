@@ -1,8 +1,8 @@
 {% extends 'template.html' %}
 
-{% block tab_title %}Join Events{% endblock %}
+{% block tab_title %}My Events{% endblock %}
 
-{% block title %}Join Events at {{ organization_name }}{% endblock %}
+{% block title %}My Events{% endblock %}
 
 {% block content %}
 <section class="account">
@@ -12,28 +12,32 @@
                 <a class="btn form-btn" href=".." style="background-color: rgb(170, 169, 169); color: black;">Go
                     Back</a>
             </div>
-	    <br />
-	    <h2><b>Click an Event to View Details and Join</b></h2>
-            
+            <br />
+            <h2><b>Click an Event to View Details</b></h2>
+
             <br /> <br />
             <ul>
                 {% for event in event_list %}
-                <a href="/organization/{{ org_id }}/events/{{ event[0] }}/"
+                <a href="/organization/{{ event[4] }}/events/{{ event[0] }}/"
                     style="color: inherit; text-decoration: none; cursor: pointer;">
                     <li style="list-style: none;">
                         <div class="row align-items-start">
                             <div class="col-md-4">
                                 {% if event[2] == 'football' %}
-                                <img class="org-logo" src="{{url_for('static', filename='football.png')}}" style="width: 100%; padding: 10px;"/>
+                                <img class="org-logo" src="{{url_for('static', filename='football.png')}}"
+                                    style="width: 100%; padding: 10px;" />
                                 {% elif event[2] == 'soccer' %}
-                                <img class="org-log" src="{{url_for('static', filename='soccer.png')}}" style="width: 100%; padding: 10px;">
+                                <img class="org-log" src="{{url_for('static', filename='soccer.png')}}"
+                                    style="width: 100%; padding: 10px;">
                                 {% else %}
-                                <img class="org-log" src="{{url_for('static', filename='basketball.png')}}" style="width: 100%; padding: 10px;">
+                                <img class="org-log" src="{{url_for('static', filename='basketball.png')}}"
+                                    style="width: 100%; padding: 10px;">
                                 {% endif %}
                             </div>
                             <div class="col-md-8">
                                 <br />
                                 <h2>{{ event[1] }}</h2>
+                                <p><strong>{{ event[5] }}</strong></p>
                                 <p><i>{{ event[2] }}</i><br />{{ event[3] }}</p>
                             </div>
                         </div>
