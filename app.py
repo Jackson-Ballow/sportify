@@ -508,7 +508,7 @@ def organization_events(org_id):
 
     
     with connection.cursor() as cursorObject:
-        # TODO: show events that have not ended yet - I don't know why the date isn't working here
+        # NOTE: show events that have not ended yet - I think this is working now
         today = str(datetime.today()).split(' ')[0]
         sql = "SELECT event_id, event_name, sport_name, event_bio FROM events WHERE org_id={} AND end_date >= TO_DATE('{}', 'YYYY-MM-DD')".format(org_id, today)
 
@@ -528,12 +528,11 @@ def my_registrations():
         return redirect('/')
 
     with connection.cursor() as cursorObject:
-        # TODO: show events that have not ended yet - I don't know why the date isn't working here
-        # today = str(datetime.today()).split(' ')[0]
+        # NOTE: show events that have not ended yet - I think this is working now
+        today = str(datetime.today()).split(' ')[0]
         #sql = "SELECT event_name, sport_name, event_bio, event_logo FROM events WHERE org_id={} AND end_date >= TO_DATE('{}', 'YYYY-MM-DD')".format(org_id, today)
 
-        sql = "SELECT e.event_id, e.event_name, e.sport_name, e.event_bio, e.org_id, o.name FROM events e, users_events u, organizations o WHERE u.user_id = {} AND u.event_id = e.event_id AND e.org_id = o.org_id".format(session['user'])
-        print(sql)
+        sql = "SELECT e.event_id, e.event_name, e.sport_name, e.event_bio, e.org_id, o.name FROM events e, users_events u, organizations o WHERE u.user_id = {} AND u.event_id = e.event_id AND e.org_id = o.org_id AND end_date >= TO_DATE('{}', 'YYYY-MM-DD')".format(session['user'], today)
         
         cursorObject.execute(sql)
         event_list = cursorObject.fetchall()
@@ -650,7 +649,24 @@ def schedule_game(org_id, event_id):
             cursorObject.execute(sql)
             team_list = cursorObject.fetchall()
 
-    return render_template('schedule_game.html', user=session['user'], team_list=team_list)
+        return render_template('schedule_game.html', user=session['user'], team_list=team_list)
+
+
+    if request.method == 'POST':
+        t1_id = request.form.get("team1")
+        t2_id = request.form.get("team2")
+        time = request.form.get("game_time")
+        location = request.form.get("location")
+
+        datetime = time.replace('T', ' ')
+
+        with connection.cursor() as cursorObject:
+            sql = """INSERT INTO games(game_id, event_id, team1_id, team2_id, location, date_played) VALUES ((SELECT COALESCE(MAX(game_id), 0) + 1 FROM games), {}, {}, {}, '{}', TO_DATE('{}', 'YYYY-MM-DD HH24:MI'))""".format(event_id, t1_id, t2_id, location, datetime)
+            print(sql)
+            cursorObject.execute(sql)
+            connection.commit()
+
+        return redirect("/organization/{}/events/{}".format(org_id, event_id))
 
 # Create an event
 @app.route('/organization/<int:org_id>/create_events/', methods=['GET', 'POST'])
@@ -726,6 +742,7 @@ def share_scores(org_id):
         team2 = request.form.get('team2')
         team2_score = request.form.get('team2_score')
         
+        ## TODO: Check for game ID or event ID
         with connection.cursor() as cursorObject:
             sql = "SELECT * FROM games WHERE team1_id = {} AND team2_id = {}".format(team1, team2)
             cursorObject.execute(sql)
