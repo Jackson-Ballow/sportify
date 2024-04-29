@@ -2,7 +2,7 @@
 
 {% block tab_title %}Profile{% endblock %}
 
-{% block title %}View Stats For {{ organization_name }}{% endblock %}
+{% block title %}View Stats And Upcoming Games For {{ organization_name }}{% endblock %}
 
 {% block content %}
 <section class="account">
@@ -14,7 +14,7 @@
                 <a href="/profile/" class="btn form-btn" style="width: 45%;"">View Personal Stats</a>
             </div>
             <br />
-            <h1 style="text-align: center;"><b>View Stats</b></h1>
+            <h1 style="text-align: center;"><b>View Stats and Upcoming Games</b></h1>
             <select id="sportSelect" class="table-dropdown" onchange="changeTable()">
                 <option value="basketball">Basketball</option>
                 <option value="football">Football</option>
@@ -29,6 +29,8 @@
                         <th>Team 1 Score</th>
                         <th>Team 2</th>
                         <th>Team 2 Score</th>
+			<th>Location</th>
+			<th>Scheduled Time</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -39,6 +41,8 @@
                         <td>{{ game[2] }}</td>
                         <td>{{ game[3] }}</td>
                         <td>{{ game[4] }}</td>
+                        <td>{{ game[5] }}</td>
+                        <td>{{ game[6] }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -52,6 +56,8 @@
                         <th>Team 1 Score</th>
                         <th>Team 2</th>
                         <th>Team 2 Score</th>
+			<th>Location</th>
+			<th>Scheduled Time</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -62,6 +68,8 @@
                         <td>{{ game[2] }}</td>
                         <td>{{ game[3] }}</td>
                         <td>{{ game[4] }}</td>
+                        <td>{{ game[5] }}</td>
+                        <td>{{ game[6] }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -75,6 +83,8 @@
                         <th>Team 1 Score</th>
                         <th>Team 2</th>
                         <th>Team 2 Score</th>
+			<th>Location</th>
+			<th>Scheduled Time</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -85,6 +95,8 @@
                         <td>{{ game[2] }}</td>
                         <td>{{ game[3] }}</td>
                         <td>{{ game[4] }}</td>
+                        <td>{{ game[5] }}</td>
+                        <td>{{ game[6] }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>

@@ -5,6 +5,8 @@ from datetime import datetime
 import base64
 from io import BytesIO
 import bcrypt
+import binascii
+
 
 app = Flask(__name__)
 bootstrap = Bootstrap(app)
@@ -53,19 +55,21 @@ def login():
     elif request.method == 'POST':
         email = request.form.get('email')
         password = request.form.get('password')
-
         
 
-        with connection.cursor() as cursorObject:
-            sql = "SELECT * FROM users WHERE email = '{email}' and password = '{password}'"
-            sql = sql.format(email=email, password=password)
-            cursorObject.execute(sql)
-            myResult = cursorObject.fetchall()
+        with connection.cursor() as cursor:
+            sql = "SELECT password, user_id FROM users WHERE email = :email"
+            cursor.execute(sql, [email])
+            myResult = cursor.fetchone()
 
-        if myResult and len(myResult) > 0:
-            session['user'] = myResult[0][0]
-            return redirect('/')
-        
+        if myResult:
+            stored_hash = myResult[0].encode('utf-8') if isinstance(myResult[0], str) else myResult[0]
+            stored_hash = binascii.unhexlify(myResult[0])
+
+            if bcrypt.checkpw(password.encode('utf-8'), stored_hash):
+                session['user'] = myResult[1]
+                return redirect('/')
+
         return render_template('login.html', warning='Email or password did not match')
 
 
@@ -100,19 +104,29 @@ def register(passwordFlag=False, emailFlag=False):
             return render_template('register.html', emailFlag=True)
 
         # TODO: Encrypt password
-        sql_create_user = "INSERT INTO users (user_id, fullname, email, password, profile_picture) VALUES ((SELECT COALESCE(MAX(user_id), 0) + 1 FROM users), '{}', '{}', '{}', :blob_data)".format(fullname, email, password)
+        salt = bcrypt.gensalt()
+        hashed_password = bcrypt.hashpw(password.encode('utf-8'), salt)
+        
+        sql_create_user = """
+        INSERT INTO users (user_id, fullname, email, password, profile_picture)
+        VALUES ((SELECT COALESCE(MAX(user_id), 0) + 1 FROM users), :fullname, :email, :password, :blob_data)
+        """
 
-        # create the user
-        with connection.cursor() as cursorObject:
-            cursorObject.execute(sql_create_user, [file_data])
+# Use cx_Oracle's cursor to execute the query safely
+        with connection.cursor() as cursor:
+            cursor.execute(sql_create_user, {
+                'fullname': fullname,
+                'email': email,
+                'password': hashed_password,
+                'blob_data': file_data
+            })
+
             connection.commit()
 
-        # set session user
-        with connection.cursor() as cursorObject:
-            cursorObject.execute("SELECT user_id FROM users")
-            result = cursorObject.fetchall()
-            if result:
-                session['user'] = result[-1][0]
+            cursor.execute("SELECT user_id FROM users ORDER BY user_id DESC")
+            newest_user_id = cursor.fetchone()[0] 
+
+        session['user'] = newest_user_id
 
         return redirect('/')
 
@@ -188,7 +202,7 @@ def profile():
 
     with connection.cursor() as cursorObject:
         # Get basketball stats
-        sql = "SELECT e.event_name, g.team1_id, g.team1_score, g.team2_id, g.team2_score FROM games g, teams_users u, events e, teams t WHERE u.user_id = {} and e.sport_name = 'basketball' and u.team_id = t.team_id and t.event_id = e.event_id and (g.team1_id = t.team_id or g.team2_id = t.team_id)".format(session['user'])
+        sql = "SELECT e.event_name, g.team1_id, g.team1_score, g.team2_id, g.team2_score, g.date_played, g.location FROM games g, teams_users u, events e, teams t WHERE u.user_id = {} and e.sport_name = 'basketball' and u.team_id = t.team_id and t.event_id = e.event_id and (g.team1_id = t.team_id or g.team2_id = t.team_id)".format(session['user'])
         cursorObject.execute(sql)
         basketball_list = cursorObject.fetchall()
         basketball_list = list(basketball_list)
@@ -207,7 +221,7 @@ def profile():
             basketball_list[i][3] = cursorObject.fetchall()[0][0]
        
         # Get football stats
-        sql = "SELECT * FROM games g, teams_users u, events e, teams t WHERE u.user_id = {} and e.sport_name = 'football' and u.team_id = t.team_id and t.event_id = e.event_id and (g.team1_id = t.team_id or g.team2_id = t.team_id)".format(session['user'])
+        sql = "SELECT e.event_name, g.team1_id, g.team1_score, g.team2_id, g.team2_score, g.date_played, g.location FROM games g, teams_users u, events e, teams t WHERE u.user_id = {} and e.sport_name = 'football' and u.team_id = t.team_id and t.event_id = e.event_id and (g.team1_id = t.team_id or g.team2_id = t.team_id)".format(session['user'])
     
         cursorObject.execute(sql)
         football_list = cursorObject.fetchall()
@@ -228,7 +242,7 @@ def profile():
             football_list[i][3] = cursorObject.fetchall()[0][0]
     
         # Get soccer stats
-        sql = "SELECT * FROM games g, teams_users u, events e, teams t WHERE u.user_id = {} and e.sport_name = 'soccer' and u.team_id = t.team_id and t.event_id = e.event_id and (g.team1_id = t.team_id or g.team2_id = t.team_id)".format(session['user'])
+        sql = "SELECT e.event_name, g.team1_id, g.team1_score, g.team2_id, g.team2_score, g.date_played, g.location FROM games g, teams_users u, events e, teams t WHERE u.user_id = {} and e.sport_name = 'soccer' and u.team_id = t.team_id and t.event_id = e.event_id and (g.team1_id = t.team_id or g.team2_id = t.team_id)".format(session['user'])
     
         cursorObject.execute(sql)
         soccer_list = cursorObject.fetchall()
@@ -431,7 +445,7 @@ def organization_stats(org_id):
 
     with connection.cursor() as cursorObject:
         # Get basketball games
-        sql = "SELECT e.event_name, g.team1_id, g.team1_score, g.team2_id, g.team2_score FROM games g, teams t, events e WHERE e.org_id = {} and t.event_id = e.event_id and g.team1_id = t.team_id and e.sport_name = 'basketball'".format(org_id)
+        sql = "SELECT e.event_name, g.team1_id, g.team1_score, g.team2_id, g.team2_score, g.location, g.date_played FROM games g, teams t, events e WHERE e.org_id = {} and t.event_id = e.event_id and g.team1_id = t.team_id and e.sport_name = 'basketball'".format(org_id)
         cursorObject.execute(sql)
         basketball_list = cursorObject.fetchall()
         basketball_list = list(basketball_list)
@@ -452,7 +466,7 @@ def organization_stats(org_id):
 
 
         # Get football games
-        sql = "SELECT e.event_name, g.team1_id, g.team1_score, g.team2_id, g.team2_score FROM games g, teams t, events e WHERE e.org_id = {} and t.event_id = e.event_id and g.team1_id = t.team_id and e.sport_name = 'football'".format(org_id)
+        sql = "SELECT e.event_name, g.team1_id, g.team1_score, g.team2_id, g.team2_score, g.location, g.date_played FROM games g, teams t, events e WHERE e.org_id = {} and t.event_id = e.event_id and g.team1_id = t.team_id and e.sport_name = 'football'".format(org_id)
         cursorObject.execute(sql)
         football_list = cursorObject.fetchall()
         football_list = list(football_list)
@@ -473,7 +487,7 @@ def organization_stats(org_id):
    
 
         # Get soccer games
-        sql = "SELECT e.event_name, g.team1_id, g.team1_score, g.team2_id, g.team2_score FROM games g, teams t, events e WHERE e.org_id = {} and t.event_id = e.event_id and g.team1_id = t.team_id and e.sport_name = 'soccer'".format(org_id)
+        sql = "SELECT e.event_name, g.team1_id, g.team1_score, g.team2_id, g.team2_score, g.location, g.date_played FROM games g, teams t, events e WHERE e.org_id = {} and t.event_id = e.event_id and g.team1_id = t.team_id and e.sport_name = 'soccer'".format(org_id)
         cursorObject.execute(sql)
         soccer_list = cursorObject.fetchall()
         soccer_list = list(soccer_list)
@@ -578,14 +592,26 @@ def event_details(org_id, event_id):
 
     
     if request.method == "POST":
-        '''    with connection.cursor() as cursorObject:
-            sql = "INSERT INTO users_events (user_id, event_id) VALUES ({}, {})".format(session['user'], event_id)
+        team_name = request.form.get('team_name')
+        users = request.form.getlist('role_select')
+      
+        with connection.cursor() as cursorObject:
+            sql = "INSERT INTO teams (team_id, event_id, team_name) VALUES ({}, {}, '{}')".format('(SELECT COALESCE(MAX(team_id), 0) + 1 FROM teams)', event_id, team_name)
             cursorObject.execute(sql)
-            cursorObject.commit()
+            
+            cursorObject.execute("SELECT MAX(team_id) FROM teams")
+            team_id = cursorObject.fetchone()[0]
 
-        return redirect('/organization/{org_id}/events/{event_id}/')
-        '''
-        return 'Change this post request to check for admin status and create a team. Joining the event will take place via the /register and /unregiser route'
+
+            # Insert into teams_users table
+            for user in users:
+                user_id = int(user)
+                sql = "INSERT INTO teams_users (user_id, team_id) VALUES ({}, {})".format(user_id, team_id)
+                cursorObject.execute(sql)
+
+            connection.commit()
+
+        return redirect('/organization/{}/events/{}/'.format(org_id, event_id))
 
 
 # Register for an event
@@ -723,16 +749,19 @@ def share_scores(org_id):
         with connection.cursor() as cursorObject:
             sql = "SELECT event_id, event_name FROM events WHERE org_id = {}".format(org_id)
             cursorObject.execute(sql)
-            event_list = cursorObject.fetchall()
-            event_list = list(event_list)
-            event_list = [list(item) for item in event_list]
+            event_list_temp = cursorObject.fetchall()
+
+            event_list = []
+            for event in event_list_temp:
+                event_list.append(list(event))
+        
 
             for i, event in enumerate(event_list):
                 sql = "SELECT team_id, team_name FROM teams t, events e WHERE t.event_id = {}".format(event[0])
                 cursorObject.execute(sql)
                 team_list = cursorObject.fetchall()
                 event_list[i].append(team_list)
-
+        
         return render_template('share_scores.html', user=session['user'], events=event_list)
 
     elif request.method == 'POST':
@@ -758,7 +787,7 @@ def share_scores(org_id):
                 if myResult is not None and len(myResult) > 0:
                     sql = "UPDATE games SET team1_score = {}, team2_score = {}WHERE team1_id = {} AND team2_id = {}".format(team2_score, team1_score, team2, team1)
                 else:
-                    sql = "INSERT INTO games (game_id, event_id, team1_id, team1_score, team2_score, date_played, location) VALUES (game_id_seq.NEXTVAL, event_id, team1, team1_score, team2, team2_score, SYSDATE, 'N/A')"
+                    sql = "INSERT INTO games (game_id, event_id, team1_id, team1_score, team2_id, team2_score, date_played, location) VALUES ((SELECT COALESCE(MAX(game_id), 0) + 1 FROM games), {}, {}, {}, {}, {}, SYSDATE, 'N/A')".format(event_id, team1, team1_score, team2, team2_score)
 
             cursorObject.execute(sql)
             connection.commit()
