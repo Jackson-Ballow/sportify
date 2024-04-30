@@ -757,7 +757,7 @@ def share_scores(org_id):
         
 
             for i, event in enumerate(event_list):
-                sql = "SELECT team_id, team_name FROM teams t, events e WHERE t.event_id = {}".format(event[0])
+                sql = "SELECT team_id, team_name FROM teams t, events e WHERE t.event_id = e.event_id AND e.event_id = {}".format(event[0])
                 cursorObject.execute(sql)
                 team_list = cursorObject.fetchall()
                 event_list[i].append(team_list)
