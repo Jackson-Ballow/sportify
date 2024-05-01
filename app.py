@@ -588,6 +588,7 @@ def event_details(org_id, event_id):
             cursorObject.execute(sql)
             event_list = cursorObject.fetchall()
 
+
         return render_template('event_details.html', user=session['user'], event=event_details[0], registered=registered, numRegistered=numRegistered, event_list=event_list, admin=usr['is_admin'])
 
     
@@ -632,9 +633,20 @@ def event_register(org_id, event_id):
         myResult = cursorObject.fetchall()
 
         if not myResult:
-            sql = "INSERT INTO users_events (user_id, event_id) VALUES ({}, {})".format(session['user'], event_id)
+            sql  = "SELECT capacity FROM events WHERE event_id = {}".format(event_id)
             cursorObject.execute(sql)
-            connection.commit()
+            capacity = cursorObject.fetchall()[0][0]
+
+            # Check the number of registered users
+            sql = "SELECT * FROM users_events WHERE event_id = {}".format(event_id)
+            cursorObject.execute(sql)
+            myResult = cursorObject.fetchall()
+            
+            # If there are spots available
+            if len(myResult) < capacity:
+                sql = "INSERT INTO users_events (user_id, event_id) VALUES ({}, {})".format(session['user'], event_id)
+                cursorObject.execute(sql)
+                connection.commit()
 
     return redirect('..')
 
