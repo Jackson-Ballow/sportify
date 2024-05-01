@@ -108,17 +108,16 @@ def register(passwordFlag=False, emailFlag=False):
         hashed_password = bcrypt.hashpw(password.encode('utf-8'), salt)
         
         sql_create_user = """
-        INSERT INTO users (user_id, fullname, email, password, profile_picture)
-        VALUES ((SELECT COALESCE(MAX(user_id), 0) + 1 FROM users), :fullname, :email, :password, :blob_data)
+        INSERT INTO users (user_id, fullname, email, password)
+        VALUES ((SELECT COALESCE(MAX(user_id), 0) + 1 FROM users), :fullname, :email, :password)
         """
 
-# Use cx_Oracle's cursor to execute the query safely
+        # Use cx_Oracle's cursor to execute the query safely
         with connection.cursor() as cursor:
             cursor.execute(sql_create_user, {
                 'fullname': fullname,
                 'email': email,
-                'password': hashed_password,
-                'blob_data': file_data
+                'password': hashed_password
             })
 
             connection.commit()
@@ -127,6 +126,9 @@ def register(passwordFlag=False, emailFlag=False):
             newest_user_id = cursor.fetchone()[0] 
 
         session['user'] = newest_user_id
+
+        with open("static/{}".format(newest_user_id), "wb") as profile_file:
+            profile_file.write(file_data)
 
         return redirect('/')
 
@@ -149,7 +151,6 @@ def create_organization():
         file_data = file.read()
 
         sql = "INSERT INTO organizations (org_id, name, bio, owner_id, profile_picture) VALUES ((SELECT COALESCE(MAX(org_id), 0) + 1 FROM organizations), :org_name, :bio, :owner_id, :blob_data)"
-
 
         with connection.cursor() as cursorObject:
             cursorObject.execute(sql, {'org_name': org_name, 'bio': bio, 'blob_data': file_data, 'owner_id': session['user']})
@@ -305,7 +306,7 @@ def organization_posts(org_id):
 
     if request.method == 'GET':
         with connection.cursor() as cursorObject:
-            sql = "SELECT p.post_id, p.title, p.text, u.fullname, u.profile_picture FROM posts p, users u WHERE p.user_id = u.user_id and p.org_id = {} ORDER BY p.post_id DESC".format(org_id)
+            sql = "SELECT p.post_id, p.title, p.text, u.fullname, u.user_id FROM posts p, users u WHERE p.user_id = u.user_id and p.org_id = {} ORDER BY p.post_id DESC".format(org_id)
             cursorObject.execute(sql)
             post_list = cursorObject.fetchall()
 
@@ -313,10 +314,7 @@ def organization_posts(org_id):
             cursorObject.execute(sql)
             organization_name = cursorObject.fetchall()[0][0]
 
-            post_list_photos = []
-            process_list_with_images(post_list, post_list_photos, 4)
-
-        return render_template('organization_posts.html', organization_name=organization_name, post_list=post_list_photos, admin=usr["is_admin"], org_id=org_id, user=session['user'])
+        return render_template('organization_posts.html', organization_name=organization_name, post_list=post_list, admin=usr["is_admin"], org_id=org_id, user=session['user'])
 
     elif request.method == 'POST':
         title = request.form.get('post_title')
@@ -371,7 +369,7 @@ def comments(org_id, post_id):
 
         with connection.cursor() as cursorObject:
             # check post exists
-            sql = "SELECT p.post_id, p.title, p.text, u.fullname, u.profile_picture FROM posts p, users u WHERE p.user_id = u.user_id and p.org_id = {} ORDER BY p.post_id DESC".format(org_id)
+            sql = "SELECT p.post_id, p.title, p.text, u.fullname, u.user_id FROM posts p, users u WHERE p.user_id = u.user_id and p.org_id = {} ORDER BY p.post_id DESC".format(org_id)
             cursorObject.execute(sql)
             post = cursorObject.fetchall()
 
@@ -379,7 +377,7 @@ def comments(org_id, post_id):
                 return redirect("/organization/{}/posts/".format(org_id))
 
             # get comments
-            sql = "SELECT c.comment_id, c.text, u.fullname, u.profile_picture FROM comments c, users u WHERE c.post_id = {} AND c.user_id = u.user_id ORDER BY c.comment_id DESC".format(post_id)
+            sql = "SELECT c.comment_id, c.text, u.fullname, u.user_id FROM comments c, users u WHERE c.post_id = {} AND c.user_id = u.user_id ORDER BY c.comment_id DESC".format(post_id)
             cursorObject.execute(sql)
             comment_list = cursorObject.fetchall()
 
@@ -387,13 +385,8 @@ def comments(org_id, post_id):
             cursorObject.execute(sql)
             organization_name = cursorObject.fetchall()[0][0]
 
-            comment_list_photos = []
-            process_list_with_images(comment_list, comment_list_photos, 3)
 
-            post_photo = []
-            process_list_with_images(post, post_photo, 4)
-
-        return render_template('comments.html', admin=usr["is_admin"], user=session['user'], organization_name=organization_name, org_id=org_id, post=post_photo[0], comment_list=comment_list_photos)
+        return render_template('comments.html', admin=usr["is_admin"], user=session['user'], organization_name=organization_name, org_id=org_id, post=post[0], comment_list=comment_list)
 
 
     elif request.method == 'POST':
@@ -727,12 +720,6 @@ def create_events(org_id):
         return redirect('/organization/{}/events'.format(org_id))
 
 
-
-### NOTE: New idea for this. As an admin, when you are looking at a specific event, I feel like there should just be a button to add scores/stats
-### Then you would go to the page with the form you made and you enter stats, but you don't have to specify the event because it'll be in the URL
-### and we'll just have to load the teams for that event, not every team for every event. Then we won't need a tripple nested array lol
-### ^Hahaha, no...^
-
 # Create a stat
 @app.route('/organization/<int:org_id>/share_scores/', methods=['GET', 'POST'])
 def share_scores(org_id):
@@ -771,7 +758,6 @@ def share_scores(org_id):
         team2 = request.form.get('team2')
         team2_score = request.form.get('team2_score')
         
-        ## TODO: Check for game ID or event ID
         with connection.cursor() as cursorObject:
             sql = "SELECT * FROM games WHERE team1_id = {} AND team2_id = {}".format(team1, team2)
             cursorObject.execute(sql)
@@ -831,7 +817,6 @@ def manage_users(org_id):
 
 
         return render_template('manage_users.html', owner=True, member_list=member_list, user=session['user'])
-        # return "Make a page that has a giant table that lists all the users. You should be able to remove a user and there should also be a button or pop up or another page where you can invite users by email. In theory you should probably be able to search/filter the table for a specific name(s) without having to send something to the backend."
 
     elif request.method == "POST":
         status = request.form.get('member_or_admin')
@@ -931,7 +916,7 @@ def remove_user(org_id, user_id):
 def hire():
     return "We aren't recruiting, idk why you clicked this"
 
-# I really have no idea what this caching stuff does
+# anti-caching stuff 
 @app.after_request
 def add_header(response):
     response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
@@ -942,7 +927,12 @@ def add_header(response):
 
 @app.errorhandler(404)
 def not_found(e):
-    return "We can't find that page. Or maybe the site is just broken because you aren't using a Mac."
+    return render_template('not_found.html')
+
+@app.errorhandler(500)
+def internal_error(e):
+    session.clear()
+    return render_template('internal_error.html')
 
 
 # This function checks a user's status as a member/admin/owner of an organization

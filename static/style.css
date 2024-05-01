@@ -162,8 +162,8 @@ html body {
 
 .org-logo {
     border-radius: 50% !important;
-    max-width: 80%;
-    max-height: 80%;
+    width: 10em;
+    height: 10em;
     margin-top: 1em;
 }
 
@@ -180,8 +180,8 @@ html body {
 
 .comment-pfp {
     border-radius: 50% !important;
-    max-width: 30%;
-    max-height: 30%;
+    width: 7em;
+    height: 7em;
     margin-top: 1em;
     float: right;
 }

@@ -46,7 +46,8 @@
                     <li style="list-style: none;">
                         <div class="row align-items-start">
                             <div class="col-md-4">
-                                <img class="org-logo" src="{{ post[4] }}" />
+                                <!--<img class="org-logo" src="{{ post[4] }}" /> -->
+                                <img class="org-logo" src="{{url_for('static', filename=post[4])}}"/>
                             </div>
                             <div class="col-md-8">
                                 <br />
