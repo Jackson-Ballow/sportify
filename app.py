@@ -56,12 +56,13 @@ def login():
         email = request.form.get('email')
         password = request.form.get('password')
         
-
+        # Look for the current email
         with connection.cursor() as cursor:
             sql = "SELECT password, user_id FROM users WHERE email = :email"
             cursor.execute(sql, [email])
             myResult = cursor.fetchone()
 
+        # If the email exists, check the password
         if myResult:
             stored_hash = myResult[0].encode('utf-8') if isinstance(myResult[0], str) else myResult[0]
             stored_hash = binascii.unhexlify(myResult[0])
@@ -144,12 +145,14 @@ def create_organization():
         return render_template('create_organization.html', user=session['user'])
 
     elif request.method == 'POST':
+        # Get user inputted info
         org_name = request.form.get('org_name')
         bio = request.form.get('bio')
         file = request.files['logo']
 
         file_data = file.read()
 
+        # Insert user inputted info
         sql = "INSERT INTO organizations (org_id, name, bio, owner_id, profile_picture) VALUES ((SELECT COALESCE(MAX(org_id), 0) + 1 FROM organizations), :org_name, :bio, :owner_id, :blob_data)"
 
         with connection.cursor() as cursorObject:
@@ -202,13 +205,14 @@ def profile():
         return redirect('/')
 
     with connection.cursor() as cursorObject:
-        # Get basketball stats
+        # Get basketball stats for specific user
         sql = "SELECT e.event_name, g.team1_id, g.team1_score, g.team2_id, g.team2_score, g.date_played, g.location FROM games g, teams_users u, events e, teams t WHERE u.user_id = {} and e.sport_name = 'basketball' and u.team_id = t.team_id and t.event_id = e.event_id and (g.team1_id = t.team_id or g.team2_id = t.team_id)".format(session['user'])
         cursorObject.execute(sql)
         basketball_list = cursorObject.fetchall()
         basketball_list = list(basketball_list)
         basketball_list = [list(item) for item in basketball_list]
 
+        # Find the matching team names for the team ids
         for i, row in enumerate(basketball_list):
             team1_id = row[1]
             team2_id = row[3]
@@ -230,6 +234,7 @@ def profile():
         football_list = [list(item) for item in football_list]
 
 
+        # Find matching team names for ids
         for i, row in enumerate(football_list):
             team1_id = row[1]
             team2_id = row[3]
@@ -250,7 +255,7 @@ def profile():
         soccer_list = list(soccer_list)
         soccer_list = [list(item) for item in soccer_list]
 
-
+        # Find matching team names for ids
         for i, row in enumerate(soccer_list):
             team1_id = row[1]
             team2_id = row[3]
@@ -282,6 +287,7 @@ def organization(org_id):
     if not usr["is_member"]:
         return redirect('/')
 
+    # Get the organization's name
     with connection.cursor() as cursorObject:
         sql = "SELECT name FROM organizations WHERE org_id = {}".format(org_id)
         cursorObject.execute(sql)
@@ -296,6 +302,7 @@ def organization(org_id):
 def organization_posts(org_id):
     global connection
 
+    # Check membership
     if not session['user']:
         return redirect('/')
 
@@ -305,6 +312,7 @@ def organization_posts(org_id):
         return redirect('/')
 
     if request.method == 'GET':
+        # Get all of the posts for an organization
         with connection.cursor() as cursorObject:
             sql = "SELECT p.post_id, p.title, p.text, u.fullname, u.user_id FROM posts p, users u WHERE p.user_id = u.user_id and p.org_id = {} ORDER BY p.post_id DESC".format(org_id)
             cursorObject.execute(sql)
@@ -320,6 +328,7 @@ def organization_posts(org_id):
         title = request.form.get('post_title')
         text = request.form.get('post_content')
 
+        # Insert user inputted data into the database
         sql = "INSERT INTO posts (post_id, user_id, org_id, title, text) VALUES ((SELECT COALESCE(MAX(post_id), 0) + 1 FROM posts), {}, {}, '{}', '{}')".format(session['user'], org_id, title.replace("'", "''"), text.replace("'", "''"))
 
 
@@ -338,10 +347,11 @@ def delete_post(org_id, post_id):
 
     usr = membership(session['user'], org_id)
 
+    # Check membership
     if not usr["is_member"] or not usr["is_admin"]:
         return redirect('/organization/{}/posts'.format(org_id))
 
-
+    # Delete the specified posts/comments from the database
     with connection.cursor() as cursorObject:
         sql = "DELETE FROM comments WHERE post_id = {}".format(post_id)
         cursorObject.execute(sql)
@@ -392,6 +402,7 @@ def comments(org_id, post_id):
     elif request.method == 'POST':
         text = request.form.get('comment_content')
 
+        # Insert a new comment
         sql = "INSERT INTO comments (comment_id, user_id, post_id, text) VALUES ((SELECT COALESCE(MAX(comment_id), 0) + 1 FROM comments), {}, {}, '{}')".format(session['user'], post_id, text.replace("'", "''"))
 
         with connection.cursor() as cursorObject:
@@ -413,7 +424,7 @@ def delete_comment(org_id, post_id, comment_id):
     if not usr["is_member"] or not usr["is_admin"]:
         return redirect('/organization/{}/posts/{}/'.format(org_id, post_id))
 
-
+    # Delete specified comment
     with connection.cursor() as cursorObject:
         sql = "DELETE FROM comments WHERE comment_id = {}".format(comment_id)
         cursorObject.execute(sql)
@@ -444,7 +455,7 @@ def organization_stats(org_id):
         basketball_list = list(basketball_list)
         basketball_list = [list(item) for item in basketball_list]
 
-
+        # Match team names with ids
         for i, row in enumerate(basketball_list):
             team1_id = row[1]
             team2_id = row[3]
@@ -466,6 +477,7 @@ def organization_stats(org_id):
         football_list = [list(item) for item in football_list]
 
 
+        # Match team names with ids
         for i, row in enumerate(football_list):
             team1_id = row[1]
             team2_id = row[3]
@@ -487,6 +499,7 @@ def organization_stats(org_id):
         soccer_list = [list(item) for item in soccer_list]
 
 
+        # Match team names with ids
         for i, row in enumerate(soccer_list):
             team1_id = row[1]
             team2_id = row[3]
@@ -515,13 +528,14 @@ def organization_events(org_id):
 
     
     with connection.cursor() as cursorObject:
-        # NOTE: show events that have not ended yet - I think this is working now
+        # Show events that have not ended yet
         today = str(datetime.today()).split(' ')[0]
         sql = "SELECT event_id, event_name, sport_name, event_bio FROM events WHERE org_id={} AND end_date >= TO_DATE('{}', 'YYYY-MM-DD')".format(org_id, today)
 
         cursorObject.execute(sql)
         event_list = cursorObject.fetchall()
 
+        # Get the organization name
         sql = "SELECT name FROM organizations WHERE org_id = {}".format(org_id)
         cursorObject.execute(sql)
         organization_name = cursorObject.fetchall()[0][0]
@@ -535,19 +549,14 @@ def my_registrations():
         return redirect('/')
 
     with connection.cursor() as cursorObject:
-        # NOTE: show events that have not ended yet - I think this is working now
+        # Show events that have not ended yet
         today = str(datetime.today()).split(' ')[0]
-        #sql = "SELECT event_name, sport_name, event_bio, event_logo FROM events WHERE org_id={} AND end_date >= TO_DATE('{}', 'YYYY-MM-DD')".format(org_id, today)
 
         sql = "SELECT e.event_id, e.event_name, e.sport_name, e.event_bio, e.org_id, o.name FROM events e, users_events u, organizations o WHERE u.user_id = {} AND u.event_id = e.event_id AND e.org_id = o.org_id AND end_date >= TO_DATE('{}', 'YYYY-MM-DD')".format(session['user'], today)
         
         cursorObject.execute(sql)
         event_list = cursorObject.fetchall()
         
-        # sql = "SELECT name FROM organizations WHERE org_id = {}".format(org_id)
-        # cursorObject.execute(sql)
-        # organization_name = cursorObject.fetchall()[0][0]
-
     return render_template('my_registrations.html', user=session['user'], event_list=event_list, registered=True)
 
 @app.route('/organization/<int:org_id>/events/<int:event_id>/', methods=['GET', 'POST'])
@@ -562,6 +571,7 @@ def event_details(org_id, event_id):
 
     if request.method == "GET":
         with connection.cursor() as cursorObject:
+            # Check if the event exists
             sql = "SELECT * FROM events WHERE event_id = {} AND org_id = {}".format(event_id, org_id)
             cursorObject.execute(sql)
             event_details = cursorObject.fetchall()
@@ -569,14 +579,17 @@ def event_details(org_id, event_id):
             if not event_details:
                 return redirect("/organization/{org_id}/events")
 
+            # Check the user's registration status
             sql = "SELECT * FROM users_events WHERE user_id={} AND event_id={}".format(session['user'], event_id)
             cursorObject.execute(sql)
             registered = len(cursorObject.fetchall()) > 0   # boolean indicating whether or not they're registered
             
+            # Check the capacity
             sql = "SELECT * FROM users_events WHERE event_id={}".format(event_id)
             cursorObject.execute(sql)
             numRegistered = len(cursorObject.fetchall())
             
+            # Get the list of registred users
             sql = "SELECT u.user_id, u.email, u.fullname FROM users_events e, users u WHERE event_id={} and u.user_id = e.user_id".format(event_id)
             cursorObject.execute(sql)
             event_list = cursorObject.fetchall()
@@ -589,6 +602,7 @@ def event_details(org_id, event_id):
         team_name = request.form.get('team_name')
         users = request.form.getlist('role_select')
       
+        # Create a new team
         with connection.cursor() as cursorObject:
             sql = "INSERT INTO teams (team_id, event_id, team_name) VALUES ({}, {}, '{}')".format('(SELECT COALESCE(MAX(team_id), 0) + 1 FROM teams)', event_id, team_name)
             cursorObject.execute(sql)
@@ -655,6 +669,7 @@ def event_unregister(org_id, event_id):
     if not usr["is_member"]:
         return redirect('/')
 
+    # Remove the registration status of the current user from the event
     with connection.cursor() as cursorObject:
         sql = "DELETE FROM users_events WHERE user_id = {} AND event_id = {}".format(session['user'], event_id)
         cursorObject.execute(sql)
@@ -663,7 +678,6 @@ def event_unregister(org_id, event_id):
     return redirect('..')
 
 # Create a game
-# TODO: Backend functionality for this
 @app.route('/organization/<int:org_id>/events/<int:event_id>/schedule_game', methods=['GET', 'POST'])
 def schedule_game(org_id, event_id):
     if not session['user']:
@@ -676,6 +690,7 @@ def schedule_game(org_id, event_id):
 
     if request.method == 'GET':
         with connection.cursor() as cursorObject:
+            # Get all the games from an organization/event
             sql = "SELECT team_id, team_name FROM teams t, events e WHERE t.event_id = e.event_id and e.event_id = {}".format(event_id)
             cursorObject.execute(sql)
             team_list = cursorObject.fetchall()
@@ -691,6 +706,7 @@ def schedule_game(org_id, event_id):
 
         datetime = time.replace('T', ' ')
 
+        # Input the scheduled game into the database
         with connection.cursor() as cursorObject:
             sql = """INSERT INTO games(game_id, event_id, team1_id, team2_id, location, date_played) VALUES ((SELECT COALESCE(MAX(game_id), 0) + 1 FROM games), {}, {}, {}, '{}', TO_DATE('{}', 'YYYY-MM-DD HH24:MI'))""".format(event_id, t1_id, t2_id, location, datetime)
             print(sql)
@@ -713,6 +729,7 @@ def create_events(org_id):
     if request.method == "GET":
         return render_template('create_events.html', user=session['user'])
 
+    # Create a new event with the user inputted info
     elif request.method == "POST":
         name = request.form.get('event_name')
         bio = request.form.get('event_bio')
@@ -746,6 +763,7 @@ def share_scores(org_id):
 
     if request.method == 'GET':
         with connection.cursor() as cursorObject:
+            # Get the list of events
             sql = "SELECT event_id, event_name FROM events WHERE org_id = {}".format(org_id)
             cursorObject.execute(sql)
             event_list_temp = cursorObject.fetchall()
@@ -754,7 +772,7 @@ def share_scores(org_id):
             for event in event_list_temp:
                 event_list.append(list(event))
         
-
+            # For each event get its info
             for i, event in enumerate(event_list):
                 sql = "SELECT team_id, team_name FROM teams t, events e WHERE t.event_id = e.event_id AND e.event_id = {}".format(event[0])
                 cursorObject.execute(sql)
@@ -770,11 +788,13 @@ def share_scores(org_id):
         team2 = request.form.get('team2')
         team2_score = request.form.get('team2_score')
         
+        # Input the results of the game into the database
         with connection.cursor() as cursorObject:
             sql = "SELECT * FROM games WHERE team1_id = {} AND team2_id = {}".format(team1, team2)
             cursorObject.execute(sql)
             myResult = cursorObject.fetchall()
 
+            # Check if a game between the two teams exists and update that if it does, otherwise create a new game and set the default location to N/A
             if myResult is not None and len(myResult) > 0:
                 sql = "UPDATE games SET team1_score = {}, team2_score = {}WHERE team1_id = {} AND team2_id = {}".format(team1_score, team2_score, team1, team2)
             else:
