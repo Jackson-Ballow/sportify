@@ -977,6 +977,12 @@ def not_found(e):
 
 @app.errorhandler(500)
 def internal_error(e):
+    with open('/var/sportify/log.out', 'a') as log_file:
+        log_file.write(str(datetime.today()))
+        log_file.write(str(e.description))
+        log_file.write(str(e.original_exception))
+        log_file.write('\n')
+
     session.clear()
     return render_template('internal_error.html')
 
@@ -1024,4 +1030,4 @@ def process_list_with_images(original, corrected, photo_index):
 # Run the code
 if __name__ == '__main__':
     # run your app
-    app.run(host='0.0.0.0', port=8000, debug=True)
+    app.run(host='0.0.0.0', port=8000, debug=False)
