@@ -709,7 +709,7 @@ def schedule_game(org_id, event_id):
         # Input the scheduled game into the database
         with connection.cursor() as cursorObject:
             sql = """INSERT INTO games(game_id, event_id, team1_id, team2_id, location, date_played) VALUES ((SELECT COALESCE(MAX(game_id), 0) + 1 FROM games), {}, {}, {}, '{}', TO_DATE('{}', 'YYYY-MM-DD HH24:MI'))""".format(event_id, t1_id, t2_id, location, datetime.replace("'","''"))
-            print(sql)
+            # print(sql)
             cursorObject.execute(sql)
             connection.commit()
 
@@ -977,6 +977,7 @@ def not_found(e):
 
 @app.errorhandler(500)
 def internal_error(e):
+    return(str(e))
     session.clear()
     return render_template('internal_error.html')
 
