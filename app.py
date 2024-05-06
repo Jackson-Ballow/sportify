@@ -369,7 +369,7 @@ def comments(org_id, post_id):
 
         with connection.cursor() as cursorObject:
             # check post exists
-            sql = "SELECT p.post_id, p.title, p.text, u.fullname, u.user_id FROM posts p, users u WHERE p.user_id = u.user_id and p.org_id = {} ORDER BY p.post_id DESC".format(org_id)
+            sql = "SELECT p.post_id, p.title, p.text, u.fullname, u.user_id FROM posts p, users u WHERE p.user_id = u.user_id and p.org_id = {} and p.post_id = {} ORDER BY p.post_id DESC".format(org_id, post_id)
             cursorObject.execute(sql)
             post = cursorObject.fetchall()
 
@@ -537,16 +537,11 @@ def my_registrations():
     with connection.cursor() as cursorObject:
         # NOTE: show events that have not ended yet - I think this is working now
         today = str(datetime.today()).split(' ')[0]
-        #sql = "SELECT event_name, sport_name, event_bio, event_logo FROM events WHERE org_id={} AND end_date >= TO_DATE('{}', 'YYYY-MM-DD')".format(org_id, today)
 
         sql = "SELECT e.event_id, e.event_name, e.sport_name, e.event_bio, e.org_id, o.name FROM events e, users_events u, organizations o WHERE u.user_id = {} AND u.event_id = e.event_id AND e.org_id = o.org_id AND end_date >= TO_DATE('{}', 'YYYY-MM-DD')".format(session['user'], today)
         
         cursorObject.execute(sql)
         event_list = cursorObject.fetchall()
-        
-        # sql = "SELECT name FROM organizations WHERE org_id = {}".format(org_id)
-        # cursorObject.execute(sql)
-        # organization_name = cursorObject.fetchall()[0][0]
 
     return render_template('my_registrations.html', user=session['user'], event_list=event_list, registered=True)
 
@@ -692,7 +687,7 @@ def schedule_game(org_id, event_id):
         datetime = time.replace('T', ' ')
 
         with connection.cursor() as cursorObject:
-            sql = """INSERT INTO games(game_id, event_id, team1_id, team2_id, location, date_played) VALUES ((SELECT COALESCE(MAX(game_id), 0) + 1 FROM games), {}, {}, {}, '{}', TO_DATE('{}', 'YYYY-MM-DD HH24:MI'))""".format(event_id, t1_id, t2_id, location, datetime)
+            sql = """INSERT INTO games(game_id, event_id, team1_id, team2_id, location, date_played) VALUES ((SELECT COALESCE(MAX(game_id), 0) + 1 FROM games), {}, {}, {}, '{}', TO_DATE('{}', 'YYYY-MM-DD HH24:MI'))""".format(event_id, t1_id, t2_id, location, datetime.replace("'","''"))
             print(sql)
             cursorObject.execute(sql)
             connection.commit()
@@ -724,7 +719,7 @@ def create_events(org_id):
         with connection.cursor() as cursorObject:
             sql = """INSERT INTO events (event_id, org_id, event_name, event_bio, sport_name, start_date, end_date, capacity) 
             VALUES ((SELECT COALESCE(MAX(event_id), 0) + 1 FROM events), {}, '{}', '{}', '{}',  TO_DATE('{}', 'YYYY-MM-DD'),  TO_DATE('{}', 'YYYY-MM-DD'), {})""".format(
-                org_id, name.replace("'", "''"), bio.replace("'", "''"), sport, start, end, capacity)
+                org_id, name.replace("'", "''"), bio.replace("'", "''"), sport, start.replace("'", "''"), end.replace("'", "''"), capacity)
 
             cursorObject.execute(sql)
             connection.commit()
@@ -793,6 +788,7 @@ def share_scores(org_id):
         return redirect('/organization/{}/stats/'.format(org_id))
 
 
+# View, remove, and add members or admins to your organization
 @app.route('/organization/<int:org_id>/manage_users/', methods=['GET', 'POST'])
 def manage_users(org_id):
     if not session['user']:
@@ -803,13 +799,15 @@ def manage_users(org_id):
     if not usr["is_member"] or not usr["is_admin"]:
         return redirect('/')
 
+    # view members
     if request.method == "GET":
         with connection.cursor() as cursorObject:
+            # get regular users
             sql = "SELECT u.user_id, u.email, u.fullname FROM users u, users_organizations uo WHERE uo.org_id = {} AND uo.user_id = u.user_id".format(org_id)
             cursorObject.execute(sql)
             users = cursorObject.fetchall()
 
-            # admins will show up in both lists; we should just display them once but somehow indicate they are an admin
+            # get admins
             sql_admins = "SELECT o.user_id, u.email, u.fullname FROM organizations_admins o, users u WHERE org_id = {} AND o.user_id = u.user_id".format(org_id)
             cursorObject.execute(sql_admins)
             admins = cursorObject.fetchall()
@@ -822,6 +820,7 @@ def manage_users(org_id):
                 member_list.append(admin)
 
             for user in users:
+                # admins are also regular users, but we don't want to add them twice
                 if user and not any(user[0] == admin[0] for admin in admins):
                     user = list(user)
                     user.append('Member')
@@ -830,6 +829,7 @@ def manage_users(org_id):
 
         return render_template('manage_users.html', owner=True, member_list=member_list, user=session['user'])
 
+    # add user
     elif request.method == "POST":
         status = request.form.get('member_or_admin')
         email = request.form.get('email')
@@ -837,8 +837,8 @@ def manage_users(org_id):
 
         with connection.cursor() as cursorObject:
 
-            # Check user exists
-            sql = "SELECT user_id FROM users WHERE email = '{}'".format(email)
+            # Check if user has a sportify account
+            sql = "SELECT user_id FROM users WHERE email = '{}'".format(email.replace("'", "''"))
             cursorObject.execute(sql)
             user = cursorObject.fetchall()
 
@@ -846,7 +846,8 @@ def manage_users(org_id):
                 warning = "You can't add a user until they create an account"
 
             else:
-                sql = "SELECT * FROM users_organizations o, users u WHERE u.user_id = o.user_id AND o.org_id = {} and u.email = '{}'".format(org_id, email)
+                # check if user is already in organization
+                sql = "SELECT * FROM users_organizations o, users u WHERE u.user_id = o.user_id AND o.org_id = {} and u.email = '{}'".format(org_id, email.replace("'", "''"))
                 cursorObject.execute(sql)
                 myResult = cursorObject.fetchall()
 
@@ -855,16 +856,21 @@ def manage_users(org_id):
 
 
                 else:
+                    # add to organization
                     user_id = user[0][0]
                     today = str(datetime.today()).split(' ')[0]
                     sql_add_user = "INSERT INTO users_organizations (user_id, org_id, date_joined) VALUES ({}, {}, TO_DATE('{}', 'YYYY-MM-DD'))".format(user_id, org_id, today)
                     cursorObject.execute(sql_add_user)
 
+                    # add admin if applicable
                     if status == "admin":
                         sql_add_admin = "INSERT INTO organizations_admins (user_id, org_id) VALUES ({}, {})".format(user_id, org_id)
                         cursorObject.execute(sql_add_admin)
 
                     connection.commit()
+
+
+            # reload page but preserve possible warning message
             sql = "SELECT u.user_id, u.email, u.fullname FROM users u, users_organizations uo WHERE uo.org_id = {} AND uo.user_id = u.user_id".format(org_id)
             cursorObject.execute(sql)
             users = cursorObject.fetchall()
@@ -882,6 +888,7 @@ def manage_users(org_id):
                 member_list.append(admin)
 
             for user in users:
+                # admins are also regular users, but we don't want to add them twice
                 if user and not any(user[0] == admin[0] for admin in admins):
                     user = list(user)
                     user.append('Member')
@@ -890,7 +897,7 @@ def manage_users(org_id):
         return render_template('manage_users.html', admin=usr['is_admin'], member_list=member_list, user=session['user'], warning=warning)
         
 
-
+# remove a user from an organization
 @app.route('/organization/<int:org_id>/manage_users/remove/<int:user_id>')
 def remove_user(org_id, user_id):
     if not session['user']:
@@ -910,6 +917,7 @@ def remove_user(org_id, user_id):
         cursorObject.execute(sql_admin)
         is_admin = len(cursorObject.fetchall()) > 0
 
+        # allow admin deletion for owner
         if is_admin and usr["is_owner"]:
             sql_del = "DELETE FROM organizations_admins WHERE user_id = {} AND org_id = {}".format(user_id, org_id)
             cursorObject.execute(sql_del)
@@ -917,13 +925,14 @@ def remove_user(org_id, user_id):
         elif is_admin:
             return redirect('..')
 
+        # remove user in database
         sql_del = "DELETE FROM users_organizations WHERE user_id = {} AND org_id = {}".format(user_id, org_id)
         cursorObject.execute(sql_del)
         connection.commit()
 
     return redirect("/organization/{}/manage_users/".format(org_id))
 
-
+# easter egg
 @app.route('/hire/', methods=['GET'])
 def hire():
     return "We aren't recruiting, idk why you clicked this"
